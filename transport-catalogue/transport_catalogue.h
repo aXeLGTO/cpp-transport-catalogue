@@ -1,5 +1,7 @@
 #pragma once
 
+#include "geo.h"
+#include <optional>
 #include <string>
 #include <string_view>
 #include <deque>
@@ -13,32 +15,16 @@ namespace transport_catalogue {
 
 struct Stop {
     std::string name;
-    double latitude;
-    double longitude;
-
-    auto MakeTuple() const;
-
-    bool operator==(const Stop& other) const;
-    bool operator!=(const Stop& other) const;
+    Coordinates coordinates;
 };
 
 struct Bus {
     std::string name;
     std::vector<const Stop*> stops;
-
-    auto MakeTuple() const;
-
-    bool operator==(const Bus& other) const;
-    bool operator!=(const Bus& other) const;
 };
 
 struct StopInfo {
     std::set<std::string_view> buses;
-
-    auto MakeTuple() const;
-
-    bool operator==(const StopInfo& other) const;
-    bool operator!=(const StopInfo& other) const;
 };
 
 struct BusInfo {
@@ -46,11 +32,6 @@ struct BusInfo {
     size_t unique_stops_amount;
     double route_length;
     double curvature;
-
-    auto MakeTuple() const;
-
-    bool operator==(const BusInfo& other) const;
-    bool operator!=(const BusInfo& other) const;
 };
 
 struct StopsPairHasher {
@@ -69,28 +50,28 @@ public:
     using StopBusesIndexMap = std::unordered_map<const Stop*, std::set<std::string_view>>;
     using StopsPair = std::pair<const Stop*, const Stop*>;
 
-    void AddStop(Stop stop);
+    void AddStop(const Stop& stop);
 
     const Stop& FindStop(std::string_view name) const;
 
-    void AddBus(Bus bus);
+    void AddBus(const Bus& bus);
 
     const Bus& FindBus(std::string_view name) const;
 
-    std::tuple<bool, StopInfo> GetStopInfo(std::string_view name) const;
+    std::optional<StopInfo> GetStopInfo(std::string_view name) const;
 
-    std::tuple<bool, BusInfo> GetBusInfo(std::string_view name) const;
+    std::optional<BusInfo> GetBusInfo(std::string_view name) const;
 
-    void AddDistance(StopsPair stops_pair, double distance);
+    void SetDistance(const Stop& from, const Stop& to, double distance);
 
-    double GetDistance(StopsPair stops_pair) const;
+    double GetDistance(const Stop& from, const Stop& to) const;
 
 private:
     std::deque<Stop> stops;
-    StopIndexMap stopname_to_stop;
+    StopIndexMap stop_by_name;
 
     std::deque<Bus> buses;
-    BusIndexMap busname_to_bus;
+    BusIndexMap bus_by_name;
 
     StopBusesIndexMap stop_to_busnames;
     std::unordered_map<StopsPair, double, StopsPairHasher> stops_to_distance;

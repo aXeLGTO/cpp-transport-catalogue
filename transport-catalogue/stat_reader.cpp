@@ -14,14 +14,9 @@ void ReadQueries(const TransportCatalogue& catalogue, istream& input, ostream& o
     input >> num_queries;
     getline(input, line);
 
-    vector<Query> queries;
-    queries.reserve(num_queries);
     while(num_queries --> 0) {
         getline(input, line);
-        queries.push_back(ParseQuery(line));
-    }
-
-    for (const auto& query : queries) {
+        auto query = ParseQuery(line);
         switch(query.type) {
             case QueryType::PRINT_STOP:
                 PrintStop(catalogue, query, output);
@@ -57,12 +52,12 @@ ostream& operator<<(ostream& out, const Query& query) {
 void PrintStop(const TransportCatalogue& catalogue, const Query& query, ostream& output) {
     output <<  "Stop "s  << query.name << ": "s;
 
-    auto [sucess, stop_info] = catalogue.GetStopInfo(query.name);
-    if (sucess) {
-        if (stop_info.buses.size() > 0) {
+    auto stop_info = catalogue.GetStopInfo(query.name);
+    if (stop_info) {
+        if (stop_info->buses.size() > 0) {
             output << "buses ";
             bool isFirst = true;
-            for (const auto bus : stop_info.buses) {
+            for (const auto bus : stop_info->buses) {
                 if (!isFirst) {
                     output << " ";
                 }
@@ -80,15 +75,15 @@ void PrintStop(const TransportCatalogue& catalogue, const Query& query, ostream&
 void PrintBus(const TransportCatalogue& catalogue, const Query& query, ostream& output) {
     output <<  "Bus "s  << query.name << ": "s;
 
-    auto [sucess, bus_info] = catalogue.GetBusInfo(query.name);
-    if (sucess) {
+    auto bus_info = catalogue.GetBusInfo(query.name);
+    if (bus_info) {
         output
-            << bus_info.stops_amount << " stops on route, "s
-            << bus_info.unique_stops_amount << " unique stops, "s
+            << bus_info->stops_amount << " stops on route, "s
+            << bus_info->unique_stops_amount << " unique stops, "s
             << setprecision(6)
-            << bus_info.route_length << " route length, "s
+            << bus_info->route_length << " route length, "s
             << setprecision(6)
-            << bus_info.curvature << " curvature"s;
+            << bus_info->curvature << " curvature"s;
     } else {
         output << "not found"s;
     }

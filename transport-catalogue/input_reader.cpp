@@ -22,26 +22,23 @@ void ReadQueries(TransportCatalogue& catalogue, std::istream& input) {
         lines.push_back(move(line));
         auto [type, rest_query] = ParseQueryType(lines.back());
         switch (type) {
-            case QueryType::ADD_STOP:
-                stop_queries.push_back(ParseAddStopQuery(rest_query));
+            case QueryType::ADD_STOP: {
+                auto query = ParseAddStopQuery(rest_query);
+                stop_queries.push_back(query);
+                catalogue.AddStop(ParseStop(query));
                 break;
-            case QueryType::ADD_BUS:
+            }
+            case QueryType::ADD_BUS: {
                 bus_queries.push_back(ParseAddBusQuery(rest_query));
                 break;
+            }
         }
-    }
-
-    for (const auto& query : stop_queries) {
-        catalogue.AddStop(ParseStop(query));
     }
 
     for (const auto& query : stop_queries) {
         auto* stop = &catalogue.FindStop(query.name);
         for (const auto& [name, distance] : query.distances) {
-            catalogue.AddDistance(make_pair(
-                stop,
-                &catalogue.FindStop(name)
-            ), distance);
+            catalogue.SetDistance(*stop, catalogue.FindStop(name), distance);
         }
     }
 
@@ -57,7 +54,7 @@ void ReadQueries(TransportCatalogue& catalogue, std::istream& input) {
 namespace detail {
 
 Stop ParseStop(const AddStopQuery& query) {
-    return {string(query.name), query.latitude, query.longitude};
+    return {string(query.name), {query.latitude, query.longitude}};
 }
 
 void ParseBusRoute(string_view data, vector<string_view>& stops) {

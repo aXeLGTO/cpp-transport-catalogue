@@ -6,7 +6,9 @@ struct Coordinates {
     double lat;
     double lng;
     bool operator==(const Coordinates& other) const {
-        return lat == other.lat && lng == other.lng;
+        static const double TOLERANCE = 1e-6;
+        return std::abs(lat - other.lat) < TOLERANCE
+            && std::abs(lng - other.lng) < TOLERANCE;
     }
     bool operator!=(const Coordinates& other) const {
         return !(*this == other);

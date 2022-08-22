@@ -1,8 +1,10 @@
 #include "transport_catalogue.h"
 #include "geo.h"
+#include "tests.h"
 
 #include <numeric>
 #include <algorithm>
+#include <optional>
 #include <unordered_set>
 #include <tuple>
 #include <utility>
@@ -11,92 +13,42 @@ using namespace std;
 
 namespace transport_catalogue {
 
-auto Stop::MakeTuple() const {
-    return tie(name, latitude, longitude);
-}
-
-bool Stop::operator==(const Stop& other) const {
-    return MakeTuple() == other.MakeTuple();
-}
-
-bool Stop::operator!=(const Stop& other) const {
-    return !(*this == other);
-}
-
-auto Bus::MakeTuple() const {
-    return tie(name, stops);
-}
-
-bool Bus::operator==(const Bus& other) const {
-    return MakeTuple() == other.MakeTuple();
-}
-
-bool Bus::operator!=(const Bus& other) const {
-    return !(*this == other);
-}
-
-auto StopInfo::MakeTuple() const {
-    return tie(buses);
-}
-
-bool StopInfo::operator==(const StopInfo& other) const {
-    return MakeTuple() == other.MakeTuple();
-}
-
-bool StopInfo::operator!=(const StopInfo& other) const {
-    return !(*this == other);
-}
-
-
-auto BusInfo::MakeTuple() const {
-    return tie(stops_amount, unique_stops_amount, route_length);
-}
-
-bool BusInfo::operator==(const BusInfo& other) const {
-    return MakeTuple() == other.MakeTuple();
-}
-
-bool BusInfo::operator!=(const BusInfo& other) const {
-    return !(*this == other);
-}
-
-void TransportCatalogue::AddStop(Stop stop) {
+void TransportCatalogue::AddStop(const Stop& stop) {
     stops.push_back(move(stop));
     auto* ptr_stop = &stops.back();
-    stopname_to_stop[ptr_stop->name] = ptr_stop;
+    stop_by_name[ptr_stop->name] = ptr_stop;
     stop_to_busnames.insert({ptr_stop, {}});
 }
 
 const Stop& TransportCatalogue::FindStop(string_view name) const {
-    return *stopname_to_stop.at(name);
+    return *stop_by_name.at(name);
 }
 
-void TransportCatalogue::AddBus(Bus bus) {
+void TransportCatalogue::AddBus(const Bus& bus) {
     buses.push_back(move(bus));
     const auto* ptr_bus = &buses.back();
 
-    busname_to_bus[ptr_bus->name] = ptr_bus;
+    bus_by_name[ptr_bus->name] = ptr_bus;
     for (const auto* stop : ptr_bus->stops) {
         stop_to_busnames[stop].insert(ptr_bus->name);
     }
 }
 
 const Bus& TransportCatalogue::FindBus(string_view name) const {
-    return *busname_to_bus.at(name);
+    return *bus_by_name.at(name);
 }
 
-tuple<bool, StopInfo> TransportCatalogue::GetStopInfo(string_view name) const {
-    if (stopname_to_stop.count(name) == 0) {
-        return make_tuple(false, StopInfo{});
+optional<StopInfo> TransportCatalogue::GetStopInfo(string_view name) const {
+    if (stop_by_name.count(name) == 0) {
+        return nullopt;
     }
 
-    const auto& stop = FindStop(name);
-    return make_tuple(true, StopInfo{stop_to_busnames.at(&stop)});
+    return optional<StopInfo>{{stop_to_busnames.at(&FindStop(name))}};
 }
 
-tuple<bool, BusInfo> TransportCatalogue::GetBusInfo(string_view name) const {
-    if (busname_to_bus.count(name) == 0) {
-        return {false, {}};
+optional<BusInfo> TransportCatalogue::GetBusInfo(string_view name) const {
+    if (bus_by_name.count(name) == 0) {
+        return nullopt;
     }
 
     const auto& stops = FindBus(name).stops;
@@ -108,7 +60,7 @@ tuple<bool, BusInfo> TransportCatalogue::GetBusInfo(string_view name) const {
             0.0,
             plus<>{},
             [](const auto* curr, const auto* prev){
-                return ComputeDistance(Coordinates{prev->latitude, prev->longitude}, Coordinates{curr->latitude, curr->longitude});
+                return ComputeDistance(prev->coordinates, curr->coordinates);
         });
     auto distance = transform_reduce(
             next(stops.begin()), stops.end(),
@@ -116,19 +68,20 @@ tuple<bool, BusInfo> TransportCatalogue::GetBusInfo(string_view name) const {
             0.0,
             plus<>{},
             [this](const auto* curr, const auto* prev){
-                return GetDistance(make_pair(prev, curr));
+                return GetDistance(*prev, *curr);
         });
 
-    return make_tuple(true, BusInfo{stops.size(), unique_stops.size(), distance, distance / coord_distance});
+    return optional<BusInfo>{{stops.size(), unique_stops.size(), distance, distance / coord_distance}};
 }
 
-void TransportCatalogue::AddDistance(StopsPair stops_pair, double distance) {
-    stops_to_distance[stops_pair] = distance;
+void TransportCatalogue::SetDistance(const Stop& from, const Stop& to, double distance) {
+    stops_to_distance[make_pair(&from, &to)] = distance;
 }
 
-double TransportCatalogue::GetDistance(StopsPair stops_pair) const {
+double TransportCatalogue::GetDistance(const Stop& from, const Stop& to) const {
+    auto stops_pair = make_pair(&from, &to);
     if (stops_to_distance.count(stops_pair) == 0) {
-        return stops_to_distance.at({stops_pair.second, stops_pair.first});
+        return stops_to_distance.at(make_pair(&to, &from));
     }
     return stops_to_distance.at(stops_pair);
 }
