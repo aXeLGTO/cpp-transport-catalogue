@@ -2,8 +2,6 @@
 #include "domain.h"
 #include "transport_catalogue.h"
 #include "geo.h"
-#include "stat_reader.h"
-#include "input_reader.h"
 
 #include <iostream>
 #include <string>
@@ -29,10 +27,6 @@ std::ostream& operator<<(std::ostream& out, const transport_catalogue::Stop& sto
 std::ostream& operator<<(std::ostream& out, const transport_catalogue::Bus& bus);
 
 std::ostream& operator<<(std::ostream& out, const transport_catalogue::BusStat& bus_info);
-
-std::ostream& operator<<(std::ostream& out, const transport_catalogue::input::detail::AddStopQuery& query);
-
-std::ostream& operator<<(std::ostream& out, const transport_catalogue::input::detail::AddBusQuery& query);
 
 template<typename T, typename U>
 std::ostream& operator<<(std::ostream& os, const std::pair<T, U>& p) {
@@ -100,13 +94,5 @@ void TestGetStopInfo();
 void TestGetBusInfo();
 
 void TestAddStopsDistance();
-
-void TestOutputParseQuery();
-
-void TestStatReader();
-
-void TestInputParseQuery();
-
-void TestInputReader();
 
 void TestAll();
