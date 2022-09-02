@@ -1,0 +1,52 @@
+{
+  "base_requests": [
+    {
+      "type": "Bus",
+      "name": "114",
+      "stops": ["Морской вокзал", "Ривьерский мост"],
+      "is_roundtrip": false
+    },
+    {
+      "type": "Bus",
+      "name": "115 круговой",
+      "stops": ["Морской вокзал", "Невский проспект", "Озерки", "Морской вокзал"],
+      "is_roundtrip": true
+    },
+    {
+      "type": "Stop",
+      "name": "Ривьерский мост",
+      "latitude": 43.587795,
+      "longitude": 39.716901,
+      "road_distances": {"Морской вокзал": 850}
+    },
+    {
+      "type": "Stop",
+      "name": "Морской вокзал",
+      "latitude": 43.581969,
+      "longitude": 39.719848,
+      "road_distances": {"Ривьерский мост": 850, "Озерки": 100}
+    },
+    {
+      "type": "Stop",
+      "name": "Невский проспект",
+      "latitude": 143,
+      "longitude": 39.015,
+      "road_distances": {"Озерки": 550.0, "Морской вокзал": 1000}
+    },
+    {
+      "type": "Stop",
+      "name": "Озерки",
+      "latitude": 115,
+      "longitude": 0,
+      "road_distances": {"Невский проспект": 50}
+    }
+  ],
+  "stat_requests": [
+    { "id": 1, "type": "Stop", "name": "Ривьерский мост" },
+    { "id": 2, "type": "Bus", "name": "114" }
+    { "id": 3, "type": "Stop", "name": "Морской вокзал" },
+    { "id": 4, "type": "Stop", "name": "Беговая" },
+    { "id": 5, "type": "Bus", "name": "114 круговой" }
+    { "id": 6, "type": "Bus", "name": "115 круговой" }
+  ]
+}

@@ -1,0 +1,1 @@
+g++ `ls *.cpp` -std=c++17 -g -o transport_catalogue

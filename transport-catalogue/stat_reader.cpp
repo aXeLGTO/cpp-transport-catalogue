@@ -1,12 +1,15 @@
 #include "stat_reader.h"
+#include "request_handler.h"
 
 #include <iomanip>
+#include <string_view>
+#include <set>
 
 using namespace std;
 
 namespace transport_catalogue::output {
 
-void ReadQueries(const TransportCatalogue& catalogue, istream& input, ostream& output) {
+void ReadQueries(const RequestHandler& request_handler, istream& input, ostream& output) {
     using namespace detail;
 
     string line;
@@ -19,10 +22,10 @@ void ReadQueries(const TransportCatalogue& catalogue, istream& input, ostream& o
         auto query = ParseQuery(line);
         switch(query.type) {
             case QueryType::PRINT_STOP:
-                PrintStop(catalogue, query, output);
+                PrintStop(request_handler, query, output);
                 break;
             case QueryType::PRINT_BUS:
-                PrintBus(catalogue, query, output);
+                PrintBus(request_handler, query, output);
                 break;
         }
 
@@ -49,20 +52,25 @@ ostream& operator<<(ostream& out, const Query& query) {
     return out << "Bus "s << query.name;
 }
 
-void PrintStop(const TransportCatalogue& catalogue, const Query& query, ostream& output) {
+void PrintStop(const RequestHandler& request_handler, const Query& query, ostream& output) {
     output <<  "Stop "s  << query.name << ": "s;
 
-    auto stop_info = catalogue.GetStopInfo(query.name);
-    if (stop_info) {
-        if (stop_info->buses.size() > 0) {
+    const auto* buses = request_handler.GetBusesByStop(query.name);
+    if (buses) {
+        if (buses->size() > 0) {
+            set<string_view> bus_names;
+            for (const auto* bus : *buses) {
+                bus_names.insert(bus->name);
+            }
+
             output << "buses ";
             bool isFirst = true;
-            for (const auto bus : stop_info->buses) {
+            for (const auto name : bus_names) {
                 if (!isFirst) {
                     output << " ";
                 }
                 isFirst = false;
-                output << bus;
+                output << name;
             }
         } else {
             output << "no buses";
@@ -72,11 +80,10 @@ void PrintStop(const TransportCatalogue& catalogue, const Query& query, ostream&
     }
 }
 
-void PrintBus(const TransportCatalogue& catalogue, const Query& query, ostream& output) {
+void PrintBus(const RequestHandler& request_handler, const Query& query, ostream& output) {
     output <<  "Bus "s  << query.name << ": "s;
 
-    auto bus_info = catalogue.GetBusInfo(query.name);
-    if (bus_info) {
+    if (auto bus_info = request_handler.GetBusStat(query.name)) {
         output
             << bus_info->stops_amount << " stops on route, "s
             << bus_info->unique_stops_amount << " unique stops, "s

@@ -1,0 +1,1 @@
+gfilt `ls *.cpp` -std=c++17 -O3 -Wall -Werror -o transport_catalogue

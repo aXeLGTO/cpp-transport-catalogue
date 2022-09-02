@@ -1,5 +1,6 @@
 #pragma once
 
+#include "request_handler.h"
 #include "transport_catalogue.h"
 
 #include <iostream>
@@ -7,7 +8,7 @@
 
 namespace transport_catalogue::output {
 
-void ReadQueries(const TransportCatalogue& catalogue, std::istream& input, std::ostream& output);
+void ReadQueries(const RequestHandler& request_handler, std::istream& input, std::ostream& output);
 
 namespace detail {
 
@@ -37,9 +38,9 @@ std::ostream& operator<<(std::ostream& out, const Query& query);
 
 Query ParseQuery(std::string_view raw_query);
 
-void PrintStop(const TransportCatalogue& catalogue, const Query& query, std::ostream& output);
+void PrintStop(const RequestHandler& request_handler, const Query& query, std::ostream& output);
 
-void PrintBus(const TransportCatalogue& catalogue, const Query& query, std::ostream& output);
+void PrintBus(const RequestHandler& request_handler, const Query& query, std::ostream& output);
 
 } // namespace detail
 
