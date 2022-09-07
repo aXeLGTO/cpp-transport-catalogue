@@ -105,7 +105,7 @@ void TestAddBus() {
         catalogue.AddStop(stop1);
         catalogue.AddStop(stop2);
 
-        Bus bus1{"256"s, {
+        Bus bus1{"256"s, false, {
             &catalogue.FindStop(stop1.name),
             &catalogue.FindStop(stop2.name)
         }};
@@ -129,12 +129,12 @@ void TestGetStopInfo() {
         catalogue.AddStop(stop2);
         catalogue.AddStop(stop3);
 
-        Bus bus1{"750"s, {
+        Bus bus1{"750"s, false, {
             &catalogue.FindStop(stop1.name),
             &catalogue.FindStop(stop2.name),
             &catalogue.FindStop(stop1.name)
         }};
-        Bus bus2{"256"s, {
+        Bus bus2{"256"s, false, {
             &catalogue.FindStop(stop1.name),
             &catalogue.FindStop(stop2.name),
             &catalogue.FindStop(stop3.name),
@@ -207,14 +207,11 @@ void TestGetBusInfo() {
             catalogue.FindStop(stop2.name),
         distance_stop3_to_stop2);
 
-        Bus bus{"750"s, {
+        Bus bus{"750"s, false, {
             &catalogue.FindStop(stop1.name),
             &catalogue.FindStop(stop2.name),
             &catalogue.FindStop(stop2.name),
             &catalogue.FindStop(stop3.name),
-            &catalogue.FindStop(stop2.name),
-            &catalogue.FindStop(stop2.name),
-            &catalogue.FindStop(stop1.name),
         }};
         catalogue.AddBus(bus);
 
@@ -292,24 +289,24 @@ void TestAddStopsDistance() {
 
 void TestParsePoint() {
     const json::Array& raw_point{{15.0}, {-37.5}};
-    const svg::Point& point = ParsePoint(raw_point);
+    const svg::Point& point = details::ParsePoint(raw_point);
     ASSERT(abs(point.x - raw_point[0].AsDouble()) < TOLERANCE);
     ASSERT(abs(point.y - raw_point[1].AsDouble()) < TOLERANCE);
 }
 
 void TestParseColor() {
     const json::Node& color_str = {"red"s};
-    const svg::Color& color_name = ParseColor(color_str);
+    const svg::Color& color_name = details::ParseColor(color_str);
     ASSERT_EQUAL(color_str.AsString(), get<string>(color_name));
 
     const json::Array& color_rgb = {{0}, {150}, {255}};
-    const svg::Rgb rgb = get<svg::Rgb>(ParseColor(color_rgb));
+    const svg::Rgb rgb = get<svg::Rgb>(details::ParseColor(color_rgb));
     ASSERT_EQUAL(color_rgb[0].AsInt(), rgb.red);
     ASSERT_EQUAL(color_rgb[1].AsInt(), rgb.green);
     ASSERT_EQUAL(color_rgb[2].AsInt(), rgb.blue);
 
     const json::Array& color_rgba = {{0}, {150}, {255}, {0.25}};
-    const svg::Rgba rgba = get<svg::Rgba>(ParseColor(color_rgba));
+    const svg::Rgba rgba = get<svg::Rgba>(details::ParseColor(color_rgba));
     ASSERT_EQUAL(color_rgba[0].AsInt(), rgba.red);
     ASSERT_EQUAL(color_rgba[1].AsInt(), rgba.green);
     ASSERT_EQUAL(color_rgba[2].AsInt(), rgba.blue);

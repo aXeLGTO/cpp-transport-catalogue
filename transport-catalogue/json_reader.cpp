@@ -24,7 +24,7 @@ RenderSettings ParseRenderSettings(const json::Document& document) {
     const auto& settings = document.GetRoot().AsMap().at("render_settings"s).AsMap();
     vector<svg::Color> color_palette;
     for (const auto& color : settings.at("color_palette"s).AsArray()) {
-        color_palette.push_back(ParseColor(color));
+        color_palette.push_back(details::ParseColor(color));
     }
     return {
         settings.at("width"s).AsDouble(),
@@ -33,14 +33,54 @@ RenderSettings ParseRenderSettings(const json::Document& document) {
         settings.at("line_width"s).AsDouble(),
         settings.at("stop_radius"s).AsDouble(),
         settings.at("bus_label_font_size"s).AsInt(),
-        ParsePoint(settings.at("bus_label_offset"s).AsArray()),
+        details::ParsePoint(settings.at("bus_label_offset"s).AsArray()),
         settings.at("stop_label_font_size"s).AsInt(),
-        ParsePoint(settings.at("stop_label_offset"s).AsArray()),
-        ParseColor(settings.at("underlayer_color"s)),
+        details::ParsePoint(settings.at("stop_label_offset"s).AsArray()),
+        details::ParseColor(settings.at("underlayer_color"s)),
         settings.at("underlayer_width"s).AsDouble(),
         move(color_palette)
     };
 }
+
+void ParseBaseRequests(TransportCatalogue& catalogue, const json::Document& document) {
+    const auto requests = document.GetRoot().AsMap().at("base_requests"s).AsArray();
+    for (const auto& req : requests) {
+        const auto& type = req.AsMap().at("type"s).AsString();
+
+        if (type == "Stop"s) {
+            catalogue.AddStop({req.AsMap().at("name"s).AsString(), {
+                req.AsMap().at("latitude"s).AsDouble(),
+                req.AsMap().at("longitude"s).AsDouble()
+            }});
+        }
+    }
+
+    for (const auto& req : requests) {
+        const auto type = req.AsMap().at("type"s).AsString();
+
+        if (type == "Stop"s) {
+            details::ParseInputDistanceRequest(catalogue, req);
+        } else if (type == "Bus"s) {
+            details::ParseInputBusRequest(catalogue, req);
+        }
+    }
+}
+
+void ParseStatRequests(const RequestHandler& req_handler, const Document& document, ostream& out) {
+    Array responses;
+    for (const auto& req : document.GetRoot().AsMap().at("stat_requests"s).AsArray()) {
+        const auto type = req.AsMap().at("type"s).AsString();
+        if (type == "Stop"s) {
+            responses.push_back(details::ParseOutputStopRequest(req_handler, req));
+        } else if (type == "Bus"s) {
+            responses.push_back(details::ParseOutputBusRequest(req_handler, req));
+        }
+    }
+
+    Print(json::Document{{responses}}, out);
+}
+
+namespace details {
 
 svg::Point ParsePoint(const json::Array &point) {
     return {point[0].AsDouble(), point[1].AsDouble()};
@@ -66,30 +106,6 @@ svg::Color ParseColor(const json::Node& color) {
     return color.AsString();
 }
 
-void ParseBaseRequests(TransportCatalogue& catalogue, const json::Document& document) {
-    const auto requests = document.GetRoot().AsMap().at("base_requests"s).AsArray();
-    for (const auto& req : requests) {
-        const auto& type = req.AsMap().at("type"s).AsString();
-
-        if (type == "Stop"s) {
-            catalogue.AddStop({req.AsMap().at("name"s).AsString(), {
-                req.AsMap().at("latitude"s).AsDouble(),
-                req.AsMap().at("longitude"s).AsDouble()
-            }});
-        }
-    }
-
-    for (const auto& req : requests) {
-        const auto type = req.AsMap().at("type"s).AsString();
-
-        if (type == "Stop"s) {
-            ParseInputDistanceRequest(catalogue, req);
-        } else if (type == "Bus"s) {
-            ParseInputBusRequest(catalogue, req);
-        }
-    }
-}
-
 void ParseInputDistanceRequest(TransportCatalogue& catalogue, const Node& request) {
     const auto from = request.AsMap().at("name"s).AsString();
     for (const auto& [to, distance] : request.AsMap().at("road_distances"s).AsMap()) {
@@ -102,40 +118,14 @@ void ParseInputDistanceRequest(TransportCatalogue& catalogue, const Node& reques
 
 void ParseInputBusRequest(TransportCatalogue& catalogue, const Node& request) {
     auto dict = request.AsMap();
-    auto stops = dict.at("stops"s).AsArray();
     bool is_roundtrip = dict.at("is_roundtrip"s).AsBool();
 
-    vector<StopPtr> out_stops;
-    ParseRoute(catalogue, stops.begin(), stops.end(), out_stops, is_roundtrip);
-    catalogue.AddBus({dict.at("name"s).AsString(), move(out_stops)});
-}
-
-void ParseRoute(TransportCatalogue &catalogue, Array::const_iterator first, Array::const_iterator last, std::vector<StopPtr> &out_stops, bool is_roundtrip) {
-    if (first == last) {
-        return;
+    vector<StopPtr> stops;
+    for (const auto& stop_name : dict.at("stops"s).AsArray()) {
+        stops.push_back(&catalogue.FindStop(stop_name.AsString()));
     }
 
-    auto* stop = &catalogue.FindStop(first->AsString());
-    out_stops.push_back(stop);
-    ParseRoute(catalogue, next(first), last, out_stops, is_roundtrip);
-
-    if (!is_roundtrip && next(first) != last) {
-        out_stops.push_back(stop);
-    }
-}
-
-void ParseStatRequests(const RequestHandler& req_handler, const Document& document, ostream& out) {
-    Array responses;
-    for (const auto& req : document.GetRoot().AsMap().at("stat_requests"s).AsArray()) {
-        const auto type = req.AsMap().at("type"s).AsString();
-        if (type == "Stop"s) {
-            responses.push_back(ParseOutputStopRequest(req_handler, req));
-        } else if (type == "Bus"s) {
-            responses.push_back(ParseOutputBusRequest(req_handler, req));
-        }
-    }
-
-    Print(json::Document{{responses}}, out);
+    catalogue.AddBus({dict.at("name"s).AsString(), is_roundtrip, move(stops)});
 }
 
 Node ParseOutputStopRequest(const RequestHandler& req_handler, const Node& req) {
@@ -172,6 +162,8 @@ Node ParseOutputBusRequest(const RequestHandler& req_handler, const Node& req) {
         }};
     }
 }
+
+} // namespace details
 
 } // namespace transport_catalogue
 

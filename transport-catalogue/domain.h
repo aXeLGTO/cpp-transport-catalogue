@@ -29,6 +29,7 @@ using StopPtr = const Stop*;
 
 struct Bus {
     std::string name;
+    bool is_roundtrip;
     std::vector<StopPtr> stops;
 };
 
@@ -40,5 +41,21 @@ struct BusStat {
     double route_length;
     double curvature;
 };
+
+std::vector<StopPtr> MakeRoute(BusPtr bus);
+
+template<typename Iterator>
+void MakeRoute(Iterator first, Iterator last, std::vector<StopPtr> &out_stops, bool is_roundtrip) {
+    if (first == last) {
+        return;
+    }
+
+    out_stops.push_back(*first);
+    MakeRoute(next(first), last, out_stops, is_roundtrip);
+
+    if (!is_roundtrip && next(first) != last) {
+        out_stops.push_back(*first);
+    }
+}
 
 } // namespace transport_catalogue

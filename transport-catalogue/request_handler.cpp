@@ -2,9 +2,12 @@
 #include "domain.h"
 #include "geo.h"
 #include "map_renderer.h"
+#include "svg.h"
 
 #include <algorithm>
 #include <numeric>
+#include <set>
+#include <vector>
 
 /*
  * Здесь можно было бы разместить код обработчика запросов к базе, содержащего логику, которую не
@@ -26,7 +29,7 @@ RequestHandler::RequestHandler(const TransportCatalogue& db, const MapRenderer& 
 // Возвращает информацию о маршруте (запрос Bus)
 std::optional<BusStat> RequestHandler::GetBusStat(const std::string_view& bus_name) const {
     if (const auto bus = db_.FindBus(bus_name)) {
-        const auto& stops = bus->stops;
+        const vector<StopPtr> stops = MakeRoute(bus);
         unordered_set<StopPtr> unique_stops(stops.begin(), stops.end());
 
         auto coord_distance = transform_reduce(
@@ -58,16 +61,15 @@ const std::unordered_set<BusPtr>* RequestHandler::GetBusesByStop(const std::stri
 }
 
 svg::Document RequestHandler::RenderMap() const {
-    vector<BusPtr> buses(db_.GetBusesCount());
-    transform(
-        db_.begin(), db_.end(),
-        buses.begin(),
-        [](const auto& p) {
-            return p.second;
+    vector<BusPtr> buses;
+    buses.reserve(db_.GetBusesCount());
+    for (const auto& [_, bus] : db_) {
+        if (!bus->stops.empty()) {
+            buses.push_back(bus);
         }
-    );
+    }
 
-    unordered_set<StopPtr> stops;
+    set<StopPtr> stops;
     for (const auto* bus : buses) {
         stops.insert(bus->stops.begin(), bus->stops.end());
     }
@@ -78,14 +80,18 @@ svg::Document RequestHandler::RenderMap() const {
         points.begin(),
         [](const StopPtr stop){
             return stop->coordinates;
-        });
+        }
+    );
 
     SphereProjector projector(
         points.begin(), points.end(), renderer_.GetSetings().width,
         renderer_.GetSetings().height, renderer_.GetSetings().padding
     );
 
-    return renderer_.Render(projector, buses.begin(), buses.end());
+    svg::Document document;
+    renderer_.RenderRoutes(buses.begin(), buses.end(), projector, document);
+    renderer_.RenderStops(stops.begin(), stops.end(), projector, document);
+    return document;
 }
 
 } // namespace transport_catalogue {

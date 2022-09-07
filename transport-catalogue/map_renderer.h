@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <optional>
+#include <ratio>
 #include <vector>
 
 /*
@@ -117,41 +118,48 @@ public:
     const RenderSettings& GetSetings() const;
 
     template<typename BusIterator>
-    svg::Document Render(const SphereProjector& projector, BusIterator first, BusIterator last) const;
+    void RenderRoutes(BusIterator first, BusIterator last, const SphereProjector& projector, svg::Document& document) const;
+
+    template<typename StopIterator>
+    void RenderStops(StopIterator first, StopIterator last, const SphereProjector& projector, svg::Document& document) const;
 
 private:
+    svg::Polyline RenderRouteLine(transport_catalogue::BusPtr bus, const svg::Color& color, const SphereProjector& projector, svg::Document& document) const;
+
+    void RenderRouteName(const svg::Point& position, const svg::Color& color, const std::string& name, std::vector<svg::Text>& out_texts) const;
+
     RenderSettings settings_;
 };
 
-
 template<typename BusIterator>
-svg::Document MapRenderer::Render(const SphereProjector& projector, BusIterator first, BusIterator last) const {
+void MapRenderer::RenderRoutes(BusIterator first, BusIterator last, const SphereProjector& projector, svg::Document& document) const {
     using namespace svg;
+    using namespace std;
 
     size_t index = 0;
     size_t nums = settings_.color_palette.size();
+    vector<Text> route_names;
 
-    Document document;
     for (auto it = first; it != last; ++it) {
+        const auto& color = settings_.color_palette[index++ % nums];
         transport_catalogue::BusPtr bus = *it;
-        if (bus->stops.empty()) {
-            continue;
-        }
 
-        Polyline route;
-        for (const auto* stop : bus->stops) {
-            route.AddPoint(projector(stop->coordinates));
+        document.Add(RenderRouteLine(bus, color, projector, document));
+
+        RenderRouteName(projector(bus->stops.front()->coordinates), color, bus->name, route_names);
+        if (!bus->is_roundtrip && bus->stops.front() != bus->stops.back()) {
+            RenderRouteName(projector(bus->stops.back()->coordinates), color, bus->name, route_names);
         }
-        document.Add(std::move(route
-            .SetFillColor(NoneColor)
-            .SetStrokeColor(Color{settings_.color_palette.at(index++ % nums)})
-            .SetStrokeLineCap(StrokeLineCap::ROUND)
-            .SetStrokeLineJoin(StrokeLineJoin::ROUND)
-            .SetStrokeWidth(settings_.line_width)
-        ));
     }
 
-    return document;
+    for (const auto& name : route_names) {
+        document.Add(name);
+    }
+}
+
+template<typename StopIterator>
+void MapRenderer::RenderStops(StopIterator first, StopIterator last, const SphereProjector& projector, svg::Document& document) const {
+    using namespace svg;
 }
 
 } // namespace renderer

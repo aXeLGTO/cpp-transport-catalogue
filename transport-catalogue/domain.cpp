@@ -12,3 +12,14 @@
  * Если структура вашего приложения не позволяет так сделать, просто оставьте этот файл пустым.
  *
  */
+namespace transport_catalogue {
+
+using namespace std;
+
+vector<StopPtr> MakeRoute(BusPtr bus) {
+    std::vector<StopPtr> stops;
+    MakeRoute(bus->stops.begin(), bus->stops.end(), stops, bus->is_roundtrip);
+    return stops;
+}
+
+} // namespace transport_catalogue
