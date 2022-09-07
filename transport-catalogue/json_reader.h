@@ -1,5 +1,6 @@
 #pragma once
 #include "transport_catalogue.h"
+#include "map_renderer.h"
 #include "request_handler.h"
 #include "json.h"
 
@@ -13,9 +14,12 @@
 
 namespace transport_catalogue {
 
-void ReadRequests(TransportCatalogue& catalogue, std::istream& in, std::ostream& out);
+renderer::RenderSettings ParseRenderSettings(const json::Document& document);
 
-void ParseInputRequests(TransportCatalogue& catalogue, const json::Array& requests);
+svg::Point ParsePoint(const json::Array& point);
+svg::Color ParseColor(const json::Node& color);
+
+void ParseBaseRequests(TransportCatalogue& catalogue, const json::Document& document);
 
 void ParseInputDistanceRequest(TransportCatalogue& catalogue, const json::Node& request);
 
@@ -23,7 +27,7 @@ void ParseInputBusRequest(TransportCatalogue& catalogue, const json::Node& reque
 
 void ParseRoute(TransportCatalogue& catalogue, json::Array::const_iterator first, json::Array::const_iterator last, std::vector<StopPtr>& out_stops, bool is_roundtrip = false);
 
-void ParseOutputRequests(const RequestHandler& request_handler, const json::Array& requests, std::ostream& out);
+void ParseStatRequests(const RequestHandler& request_handler, const json::Document& document, std::ostream& out);
 
 json::Node ParseOutputStopRequest(const RequestHandler& request_handler, const json::Node& request);
 

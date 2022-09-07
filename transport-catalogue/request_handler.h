@@ -1,6 +1,7 @@
 #pragma once
 #include "domain.h"
 #include "transport_catalogue.h"
+#include "map_renderer.h"
 
 /*
  * Здесь можно было бы разместить код обработчика запросов к базе, содержащего логику, которую не
@@ -21,7 +22,7 @@ namespace transport_catalogue {
 class RequestHandler {
 public:
     // MapRenderer понадобится в следующей части итогового проекта
-    explicit RequestHandler(const TransportCatalogue& db/* , const renderer::MapRenderer& renderer */);
+    RequestHandler(const TransportCatalogue& db, const renderer::MapRenderer& renderer);
 
     // Возвращает информацию о маршруте (запрос Bus)
     std::optional<BusStat> GetBusStat(const std::string_view& bus_name) const;
@@ -30,12 +31,12 @@ public:
     const std::unordered_set<BusPtr>* GetBusesByStop(const std::string_view& stop_name) const;
 
     // Этот метод будет нужен в следующей части итогового проекта
-    // svg::Document RenderMap() const;
+    svg::Document RenderMap() const;
 
 private:
     // RequestHandler использует агрегацию объектов "Транспортный Справочник" и "Визуализатор Карты"
     const TransportCatalogue& db_;
-    // const renderer::MapRenderer& renderer_;
+    const renderer::MapRenderer& renderer_;
 };
 
 } // namespace transport_catalogue

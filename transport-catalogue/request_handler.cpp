@@ -1,8 +1,10 @@
 #include "request_handler.h"
+#include "domain.h"
+#include "geo.h"
+#include "map_renderer.h"
 
+#include <algorithm>
 #include <numeric>
-
-using namespace std;
 
 /*
  * Здесь можно было бы разместить код обработчика запросов к базе, содержащего логику, которую не
@@ -13,8 +15,12 @@ using namespace std;
  */
 namespace transport_catalogue {
 
-RequestHandler::RequestHandler(const TransportCatalogue& db/* , const renderer::MapRenderer& renderer */) :
-    db_(db) {
+using namespace std;
+using namespace renderer;
+
+RequestHandler::RequestHandler(const TransportCatalogue& db, const MapRenderer& renderer) :
+    db_(db),
+    renderer_(renderer) {
 }
 
 // Возвращает информацию о маршруте (запрос Bus)
@@ -49,6 +55,37 @@ std::optional<BusStat> RequestHandler::GetBusStat(const std::string_view& bus_na
 // Возвращает маршруты, проходящие через
 const std::unordered_set<BusPtr>* RequestHandler::GetBusesByStop(const std::string_view& stop_name) const {
     return db_.GetBusesByStop(stop_name);
+}
+
+svg::Document RequestHandler::RenderMap() const {
+    vector<BusPtr> buses(db_.GetBusesCount());
+    transform(
+        db_.begin(), db_.end(),
+        buses.begin(),
+        [](const auto& p) {
+            return p.second;
+        }
+    );
+
+    unordered_set<StopPtr> stops;
+    for (const auto* bus : buses) {
+        stops.insert(bus->stops.begin(), bus->stops.end());
+    }
+
+    vector<geo::Coordinates> points(stops.size());
+    transform(
+        stops.begin(), stops.end(),
+        points.begin(),
+        [](const StopPtr stop){
+            return stop->coordinates;
+        });
+
+    SphereProjector projector(
+        points.begin(), points.end(), renderer_.GetSetings().width,
+        renderer_.GetSetings().height, renderer_.GetSetings().padding
+    );
+
+    return renderer_.Render(projector, buses.begin(), buses.end());
 }
 
 } // namespace transport_catalogue {

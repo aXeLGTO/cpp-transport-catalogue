@@ -1,6 +1,8 @@
 #include "json_reader.h"
 #include "json.h"
+#include "map_renderer.h"
 #include "request_handler.h"
+#include "svg.h"
 #include "transport_catalogue.h"
 
 #include <unordered_map>
@@ -16,18 +18,58 @@ namespace transport_catalogue {
 
 using namespace std;
 using namespace json;
+using namespace renderer;
 
-void ReadRequests(TransportCatalogue& catalogue, istream& in, ostream& out) {
-    const auto document = Load(in);
-    const auto root = document.GetRoot().AsMap();
-
-    ParseInputRequests(catalogue, root.at("base_requests"s).AsArray());
-    ParseOutputRequests(RequestHandler{catalogue}, root.at("stat_requests"s).AsArray(), out);
+RenderSettings ParseRenderSettings(const json::Document& document) {
+    const auto& settings = document.GetRoot().AsMap().at("render_settings"s).AsMap();
+    vector<svg::Color> color_palette;
+    for (const auto& color : settings.at("color_palette"s).AsArray()) {
+        color_palette.push_back(ParseColor(color));
+    }
+    return {
+        settings.at("width"s).AsDouble(),
+        settings.at("height"s).AsDouble(),
+        settings.at("padding"s).AsDouble(),
+        settings.at("line_width"s).AsDouble(),
+        settings.at("stop_radius"s).AsDouble(),
+        settings.at("bus_label_font_size"s).AsInt(),
+        ParsePoint(settings.at("bus_label_offset"s).AsArray()),
+        settings.at("stop_label_font_size"s).AsInt(),
+        ParsePoint(settings.at("stop_label_offset"s).AsArray()),
+        ParseColor(settings.at("underlayer_color"s)),
+        settings.at("underlayer_width"s).AsDouble(),
+        move(color_palette)
+    };
 }
 
-void ParseInputRequests(TransportCatalogue& catalogue, const Array& requests) {
+svg::Point ParsePoint(const json::Array &point) {
+    return {point[0].AsDouble(), point[1].AsDouble()};
+}
+
+svg::Color ParseColor(const json::Node& color) {
+    if (color.IsArray()) {
+        const auto& rgba = color.AsArray();
+        if (rgba.size() == 4) {
+            return svg::Rgba{
+                static_cast<uint8_t>(rgba[0].AsInt()),
+                static_cast<uint8_t>(rgba[1].AsInt()),
+                static_cast<uint8_t>(rgba[2].AsInt()),
+                rgba[3].AsDouble(),
+            };
+        }
+        return svg::Rgb{
+            static_cast<uint8_t>(rgba[0].AsInt()),
+            static_cast<uint8_t>(rgba[1].AsInt()),
+            static_cast<uint8_t>(rgba[2].AsInt()),
+        };
+    }
+    return color.AsString();
+}
+
+void ParseBaseRequests(TransportCatalogue& catalogue, const json::Document& document) {
+    const auto requests = document.GetRoot().AsMap().at("base_requests"s).AsArray();
     for (const auto& req : requests) {
-        const auto type = req.AsMap().at("type"s).AsString();
+        const auto& type = req.AsMap().at("type"s).AsString();
 
         if (type == "Stop"s) {
             catalogue.AddStop({req.AsMap().at("name"s).AsString(), {
@@ -82,9 +124,9 @@ void ParseRoute(TransportCatalogue &catalogue, Array::const_iterator first, Arra
     }
 }
 
-void ParseOutputRequests(const RequestHandler& req_handler, const Array& requests, ostream& out) {
+void ParseStatRequests(const RequestHandler& req_handler, const Document& document, ostream& out) {
     Array responses;
-    for (const auto& req : requests) {
+    for (const auto& req : document.GetRoot().AsMap().at("stat_requests"s).AsArray()) {
         const auto type = req.AsMap().at("type"s).AsString();
         if (type == "Stop"s) {
             responses.push_back(ParseOutputStopRequest(req_handler, req));
@@ -93,7 +135,7 @@ void ParseOutputRequests(const RequestHandler& req_handler, const Array& request
         }
     }
 
-    Print(Document{{responses}}, out);
+    Print(json::Document{{responses}}, out);
 }
 
 Node ParseOutputStopRequest(const RequestHandler& req_handler, const Node& req) {

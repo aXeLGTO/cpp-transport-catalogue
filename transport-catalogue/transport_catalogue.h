@@ -5,6 +5,7 @@
 #include <string_view>
 #include <deque>
 #include <unordered_map>
+#include <map>
 #include <unordered_set>
 #include <iostream>
 
@@ -22,9 +23,17 @@ private:
 class TransportCatalogue {
 public:
     using StopIndexMap = std::unordered_map<std::string_view, StopPtr>;
-    using BusIndexMap = std::unordered_map<std::string_view, BusPtr>;
+    using BusIndexMap = std::map<std::string_view, BusPtr>;
     using StopBusesIndexMap = std::unordered_map<StopPtr, std::unordered_set<BusPtr>>;
     using StopsPair = std::pair<StopPtr, StopPtr>;
+
+    auto begin() const {
+        return bus_by_name_.begin();
+    }
+
+    auto end() const {
+        return bus_by_name_.end();
+    }
 
     void AddStop(const Stop& stop);
 
@@ -40,15 +49,17 @@ public:
 
     double GetDistance(const Stop& from, const Stop& to) const;
 
+    size_t GetBusesCount() const;
+
 private:
-    std::deque<Stop> stops;
-    StopIndexMap stop_by_name;
+    std::deque<Stop> stops_;
+    StopIndexMap stop_by_name_;
 
-    std::deque<Bus> buses;
-    BusIndexMap bus_by_name;
+    std::deque<Bus> buses_;
+    BusIndexMap bus_by_name_;
 
-    StopBusesIndexMap stop_to_buses;
-    std::unordered_map<StopsPair, double, StopsPairHasher> stops_to_distance;
+    StopBusesIndexMap stop_to_buses_;
+    std::unordered_map<StopsPair, double, StopsPairHasher> stops_to_distance_;
 };
 
 } // namespace transport_catalogue

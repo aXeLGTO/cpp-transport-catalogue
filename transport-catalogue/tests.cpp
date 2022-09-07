@@ -1,5 +1,9 @@
 #include "tests.h"
+#include "json.h"
+#include "json_reader.h"
+#include "map_renderer.h"
 #include "request_handler.h"
+#include "svg.h"
 #include "test_framework.h"
 
 #include <sstream>
@@ -60,6 +64,29 @@ ostream& operator<<(ostream& out, const BusStat& bus_info) {
         << bus_info.route_length << ", "s
         << bus_info.curvature << ")"s;
 }
+
+bool operator==(const svg::Point& lhs, const svg::Point& rhs) {
+    return tie(lhs.x, lhs.y) == tie(rhs.x, rhs.y);
+}
+
+bool operator!=(const svg::Point& lhs, const svg::Point& rhs) {
+    return !(lhs == rhs);
+}
+
+// bool operator==(const renderer::RenderSettings& lhs, const renderer::RenderSettings& rhs) {
+//     return tie(lhs.width, lhs.height, lhs.padding, lhs.line_width, lhs.stop_radius,
+//                lhs.bus_label_font_size, lhs.bus_label_offset, lhs.stop_label_font_size,
+//                lhs.stop_label_offset, lhs.underlayer_color, lhs.underlayer_width,
+//                lhs.color_palette) ==
+//            tie(rhs.width, rhs.height, rhs.padding, rhs.line_width, rhs.stop_radius,
+//                rhs.bus_label_font_size, rhs.bus_label_offset, rhs.stop_label_font_size,
+//                rhs.stop_label_offset, rhs.underlayer_color, rhs.underlayer_width,
+//                rhs.color_palette);
+// }
+//
+// bool operator!=(const renderer::RenderSettings& lhs, const renderer::RenderSettings& rhs) {
+//     return !(lhs == rhs);
+// }
 
 void TestAddStop() {
     Stop stop1{"Tolstopaltsevo"s, {55.611087, 37.208290}};
@@ -149,7 +176,7 @@ void TestGetBusInfo() {
     auto distance = distance_stop1_to_stop2 + distance_stop2_to_stop2 + distance_stop2_to_stop3 + distance_stop3_to_stop2 + distance_stop2_to_stop2 + distance_stop1_to_stop2;
 
     {
-        RequestHandler request_handler{TransportCatalogue{}};
+        RequestHandler request_handler{TransportCatalogue{}, renderer::MapRenderer{{}}};
         const auto empty = request_handler.GetBusStat("256"s);
         ASSERT(!empty);
     }
@@ -191,7 +218,7 @@ void TestGetBusInfo() {
         }};
         catalogue.AddBus(bus);
 
-        RequestHandler request_handler{catalogue};
+        RequestHandler request_handler{catalogue, renderer::MapRenderer{{}}};
         auto bus_info = request_handler.GetBusStat(bus.name);
         ASSERT(bus_info);
         ASSERT_EQUAL(bus_info->stops_amount, 7u);
@@ -263,12 +290,92 @@ void TestAddStopsDistance() {
     }
 }
 
+void TestParsePoint() {
+    const json::Array& raw_point{{15.0}, {-37.5}};
+    const svg::Point& point = ParsePoint(raw_point);
+    ASSERT(abs(point.x - raw_point[0].AsDouble()) < TOLERANCE);
+    ASSERT(abs(point.y - raw_point[1].AsDouble()) < TOLERANCE);
+}
+
+void TestParseColor() {
+    const json::Node& color_str = {"red"s};
+    const svg::Color& color_name = ParseColor(color_str);
+    ASSERT_EQUAL(color_str.AsString(), get<string>(color_name));
+
+    const json::Array& color_rgb = {{0}, {150}, {255}};
+    const svg::Rgb rgb = get<svg::Rgb>(ParseColor(color_rgb));
+    ASSERT_EQUAL(color_rgb[0].AsInt(), rgb.red);
+    ASSERT_EQUAL(color_rgb[1].AsInt(), rgb.green);
+    ASSERT_EQUAL(color_rgb[2].AsInt(), rgb.blue);
+
+    const json::Array& color_rgba = {{0}, {150}, {255}, {0.25}};
+    const svg::Rgba rgba = get<svg::Rgba>(ParseColor(color_rgba));
+    ASSERT_EQUAL(color_rgba[0].AsInt(), rgba.red);
+    ASSERT_EQUAL(color_rgba[1].AsInt(), rgba.green);
+    ASSERT_EQUAL(color_rgba[2].AsInt(), rgba.blue);
+    ASSERT(abs(color_rgba[3].AsDouble() - rgba.opacity) < TOLERANCE);
+}
+
+// void TestParseRenderSettings() {
+//     using namespace json;
+//     svg::Color color = svg::Color{svg::Rgba{255, 255, 255, 0.85}};
+//     renderer::RenderSettings render_settings{
+//         600, 400, 50, 14, 5,
+//         20, {7, 15},
+//         20, {7, -3},
+//         svg::Color{svg::Rgba{255, 255, 255, 0.85}}, 3,
+//         {
+//             svg::Color{"green"s},
+//             svg::Color{svg::Rgb{255, 255, 255}}
+//         }
+//     };
+//
+//     const Document document{{Dict{
+//         {"width"s, {render_settings.width}},
+//         {"height"s, {render_settings.height}},
+//         {"padding"s, {render_settings.padding}},
+//         {"line_width"s, {render_settings.line_width}},
+//         {"stop_radius"s, {render_settings.stop_radius}},
+//         {"bus_label_font_size"s, {render_settings.bus_label_font_size}},
+//         {"bus_label_offset"s, {Array{
+//             {render_settings.bus_label_offset.x},
+//             {render_settings.bus_label_offset.y}
+//         }}},
+//         {"stop_label_font_size"s, {render_settings.stop_label_font_size}},
+//         {"stop_label_offset"s, {Array{
+//             {render_settings.stop_label_offset.x},
+//             {render_settings.stop_label_offset.y}
+//         }}},
+//         {"underlayer_color"s, {Array{
+//             {get<svg::Rgba>(render_settings.underlayer_color).red},
+//             {get<svg::Rgba>(render_settings.underlayer_color).green},
+//             {get<svg::Rgba>(render_settings.underlayer_color).blue},
+//             {get<svg::Rgba>(render_settings.underlayer_color).opacity}
+//         }}},
+//         {"underlayer_width"s, {render_settings.underlayer_width}},
+//         {"color_palette"s, {Array{
+//             {get<string>(render_settings.color_palette[0])},
+//             {Array{
+//                 {get<svg::Rgba>(render_settings.underlayer_color).red},
+//                 {get<svg::Rgba>(render_settings.underlayer_color).green},
+//                 {get<svg::Rgba>(render_settings.underlayer_color).blue}
+//             }}
+//         }}}
+//     }}};
+//
+//     ASSERT_EQUAL(ParseRenderSettings(document), render_settings);
+// }
+
 void TestAll() {
     RUN_TEST(TestAddStop);
     RUN_TEST(TestAddBus);
     RUN_TEST(TestGetBusInfo);
     RUN_TEST(TestGetStopInfo);
     RUN_TEST(TestAddStopsDistance);
+
+    RUN_TEST(TestParsePoint);
+    RUN_TEST(TestParseColor);
+    //RUN_TEST(TestParseRenderSettings);
 
     cerr << "All tests done"s << endl;
 }
