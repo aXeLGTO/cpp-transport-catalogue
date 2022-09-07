@@ -42,6 +42,10 @@ struct BusStat {
     double curvature;
 };
 
+struct StopComparator {
+    bool operator()(StopPtr lhs, StopPtr rhs) const;
+};
+
 std::vector<StopPtr> MakeRoute(BusPtr bus);
 
 template<typename Iterator>

@@ -124,9 +124,11 @@ public:
     void RenderStops(StopIterator first, StopIterator last, const SphereProjector& projector, svg::Document& document) const;
 
 private:
-    svg::Polyline RenderRouteLine(transport_catalogue::BusPtr bus, const svg::Color& color, const SphereProjector& projector, svg::Document& document) const;
+    svg::Polyline RenderRouteLine(transport_catalogue::BusPtr bus, const svg::Color& color, const SphereProjector& projector) const;
 
     void RenderRouteName(const svg::Point& position, const svg::Color& color, const std::string& name, std::vector<svg::Text>& out_texts) const;
+
+    void RenderStopName(const svg::Point& position, const std::string& name, svg::Document& document) const;
 
     RenderSettings settings_;
 };
@@ -144,7 +146,7 @@ void MapRenderer::RenderRoutes(BusIterator first, BusIterator last, const Sphere
         const auto& color = settings_.color_palette[index++ % nums];
         transport_catalogue::BusPtr bus = *it;
 
-        document.Add(RenderRouteLine(bus, color, projector, document));
+        document.Add(RenderRouteLine(bus, color, projector));
 
         RenderRouteName(projector(bus->stops.front()->coordinates), color, bus->name, route_names);
         if (!bus->is_roundtrip && bus->stops.front() != bus->stops.back()) {
@@ -160,6 +162,20 @@ void MapRenderer::RenderRoutes(BusIterator first, BusIterator last, const Sphere
 template<typename StopIterator>
 void MapRenderer::RenderStops(StopIterator first, StopIterator last, const SphereProjector& projector, svg::Document& document) const {
     using namespace svg;
+    using namespace std;
+
+    for (auto it = first; it != last; ++it) {
+        transport_catalogue::StopPtr stop = *it;
+        document.Add(Circle()
+            .SetCenter(projector(stop->coordinates))
+            .SetRadius(settings_.stop_radius)
+            .SetFillColor("white"s));
+    }
+
+    for (auto it = first; it != last; ++it) {
+        transport_catalogue::StopPtr stop = *it;
+        RenderStopName(projector(stop->coordinates), stop->name, document);
+    }
 }
 
 } // namespace renderer

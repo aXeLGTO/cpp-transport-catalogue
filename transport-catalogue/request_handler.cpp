@@ -69,7 +69,7 @@ svg::Document RequestHandler::RenderMap() const {
         }
     }
 
-    set<StopPtr> stops;
+    set<StopPtr, StopComparator> stops;
     for (const auto* bus : buses) {
         stops.insert(bus->stops.begin(), bus->stops.end());
     }

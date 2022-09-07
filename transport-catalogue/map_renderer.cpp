@@ -24,7 +24,7 @@ const RenderSettings& MapRenderer::GetSetings() const {
     return settings_;
 }
 
-Polyline MapRenderer::RenderRouteLine(BusPtr bus, const Color& color, const SphereProjector& projector, Document& document) const {
+Polyline MapRenderer::RenderRouteLine(BusPtr bus, const Color& color, const SphereProjector& projector) const {
     const auto stops = MakeRoute(bus);
     Polyline route;
 
@@ -42,26 +42,50 @@ Polyline MapRenderer::RenderRouteLine(BusPtr bus, const Color& color, const Sphe
 
 void MapRenderer::RenderRouteName(const Point& position, const Color& color, const string& name, vector<Text>& out_texts) const {
     out_texts.push_back(Text()
-        .SetPosition(position)
-        .SetOffset(settings_.bus_label_offset)
-        .SetFontSize(settings_.bus_label_font_size)
-        .SetFontFamily("Verdana"s)
-        .SetFontWeight("bold"s)
         .SetFillColor(settings_.underlayer_color)
         .SetStrokeColor(settings_.underlayer_color)
         .SetStrokeWidth(settings_.underlayer_width)
         .SetStrokeLineCap(StrokeLineCap::ROUND)
         .SetStrokeLineJoin(StrokeLineJoin::ROUND)
-        .SetData(name)
-    );
-
-    out_texts.push_back(Text()
         .SetPosition(position)
         .SetOffset(settings_.bus_label_offset)
         .SetFontSize(settings_.bus_label_font_size)
         .SetFontFamily("Verdana"s)
         .SetFontWeight("bold"s)
+        .SetData(name)
+    );
+
+    out_texts.push_back(Text()
         .SetFillColor(color)
+        .SetPosition(position)
+        .SetOffset(settings_.bus_label_offset)
+        .SetFontSize(settings_.bus_label_font_size)
+        .SetFontFamily("Verdana"s)
+        .SetFontWeight("bold"s)
+        .SetData(name)
+    );
+}
+
+void MapRenderer::RenderStopName(const Point& position, const string& name, Document& document) const {
+    document.Add(Text()
+        .SetFillColor(settings_.underlayer_color)
+        .SetStrokeColor(settings_.underlayer_color)
+        .SetStrokeWidth(settings_.underlayer_width)
+        .SetStrokeLineCap(StrokeLineCap::ROUND)
+        .SetStrokeLineJoin(StrokeLineJoin::ROUND)
+        .SetPosition(position)
+        .SetOffset(settings_.stop_label_offset)
+        .SetFontSize(settings_.stop_label_font_size)
+        .SetFontFamily("Verdana"s)
+        .SetData(name)
+    );
+
+    document.Add(Text()
+        .SetFillColor("black"s)
+        .SetPosition(position)
+        .SetOffset(settings_.stop_label_offset)
+        .SetFontSize(settings_.stop_label_font_size)
+        .SetFontFamily("Verdana"s)
         .SetData(name)
     );
 }

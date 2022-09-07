@@ -16,6 +16,10 @@ namespace transport_catalogue {
 
 using namespace std;
 
+bool StopComparator::operator()(StopPtr lhs, StopPtr rhs) const {
+    return lhs->name < rhs->name;
+}
+
 vector<StopPtr> MakeRoute(BusPtr bus) {
     std::vector<StopPtr> stops;
     MakeRoute(bus->stops.begin(), bus->stops.end(), stops, bus->is_roundtrip);
