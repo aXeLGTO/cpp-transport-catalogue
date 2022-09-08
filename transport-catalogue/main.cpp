@@ -9,7 +9,7 @@ using namespace transport_catalogue;
 using namespace renderer;
 
 int main() {
-    TestAll();
+    // TestAll();
 
     const auto& document = json::Load(cin);
 
@@ -18,9 +18,7 @@ int main() {
 
     MapRenderer renderer(ParseRenderSettings(document));
     RequestHandler request_handler(catalogue, renderer);
-    request_handler.RenderMap().Render(cout);
-
-    //ParseStatRequests(request_handler, document, cout);
+    ParseStatRequests(request_handler, document, cout);
 
     return 0;
 }

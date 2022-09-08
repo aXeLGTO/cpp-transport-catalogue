@@ -222,7 +222,7 @@ void Document::Render(std::ostream& out) const {
     out << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"sv << endl;
     out << "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">"sv << endl;
 
-    RenderContext ctx(std::cout, 2, 2);
+    RenderContext ctx(out, 2, 2);
     for (const auto& obj : objects_) {
         obj->Render(ctx);
     }

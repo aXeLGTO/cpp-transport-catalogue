@@ -5,6 +5,7 @@
 #include "svg.h"
 #include "transport_catalogue.h"
 
+#include <sstream>
 #include <unordered_map>
 #include <vector>
 #include <set>
@@ -74,6 +75,8 @@ void ParseStatRequests(const RequestHandler& req_handler, const Document& docume
             responses.push_back(details::ParseOutputStopRequest(req_handler, req));
         } else if (type == "Bus"s) {
             responses.push_back(details::ParseOutputBusRequest(req_handler, req));
+        } else if (type == "Map"s) {
+            responses.push_back(details::ParseOutputMapRequest(req_handler, req));
         }
     }
 
@@ -161,6 +164,16 @@ Node ParseOutputBusRequest(const RequestHandler& req_handler, const Node& req) {
             {"error_message"s, {"not found"s}}
         }};
     }
+}
+
+Node ParseOutputMapRequest(const RequestHandler& req_handler, const Node& req) {
+    ostringstream out;
+    req_handler.RenderMap().Render(out);
+
+    return {{
+        {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
+        {"map", {out.str()}}
+    }};
 }
 
 } // namespace details

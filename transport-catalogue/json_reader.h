@@ -34,6 +34,8 @@ json::Node ParseOutputStopRequest(const RequestHandler& request_handler, const j
 
 json::Node ParseOutputBusRequest(const RequestHandler& request_handler, const json::Node& request);
 
+json::Node ParseOutputMapRequest(const RequestHandler& req_handler, const json::Node& req);
+
 } // namespace details
 
 } // namespace transport_catalogue
