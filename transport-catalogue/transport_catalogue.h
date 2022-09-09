@@ -43,6 +43,8 @@ public:
 
     BusPtr FindBus(std::string_view name) const;
 
+    std::optional<BusStat> GetBusStat(std::string_view bus_name) const;
+
     const std::unordered_set<BusPtr>* GetBusesByStop(std::string_view name) const;
 
     void SetDistance(const Stop& from, const Stop& to, double distance);

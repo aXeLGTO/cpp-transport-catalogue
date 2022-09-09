@@ -137,12 +137,12 @@ Node ParseOutputStopRequest(const RequestHandler& req_handler, const Node& req) 
         for (const auto* bus : *buses) {
             bus_names.insert(bus->name);
         }
-        return {{
+        return {Dict{
             {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
             {"buses"s, {Array{bus_names.begin(), bus_names.end()}}}
         }};
     } else {
-        return {{
+        return {Dict{
             {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
             {"error_message"s, {"not found"s}}
         }};
@@ -151,7 +151,7 @@ Node ParseOutputStopRequest(const RequestHandler& req_handler, const Node& req) 
 
 Node ParseOutputBusRequest(const RequestHandler& req_handler, const Node& req) {
     if (const auto bus_stat = req_handler.GetBusStat(req.AsMap().at("name"s).AsString())) {
-        return {{
+        return {Dict{
             {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
             {"curvature"s, {bus_stat->curvature}},
             {"route_length"s, {bus_stat->route_length}},
@@ -159,7 +159,7 @@ Node ParseOutputBusRequest(const RequestHandler& req_handler, const Node& req) {
             {"unique_stop_count"s, {static_cast<int>(bus_stat->unique_stops_amount)}},
         }};
     } else {
-        return {{
+        return {Dict{
             {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
             {"error_message"s, {"not found"s}}
         }};
@@ -170,7 +170,7 @@ Node ParseOutputMapRequest(const RequestHandler& req_handler, const Node& req) {
     ostringstream out;
     req_handler.RenderMap().Render(out);
 
-    return {{
+    return {Dict{
         {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
         {"map", {out.str()}}
     }};

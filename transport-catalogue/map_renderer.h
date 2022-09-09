@@ -9,32 +9,28 @@
 #include <optional>
 #include <ratio>
 #include <vector>
-
-/*
- * В этом файле вы можете разместить код, отвечающий за визуализацию карты маршрутов в формате SVG.
- * Визуализация маршрутов вам понадобится во второй части итогового проекта.
- * Пока можете оставить файл пустым.
- */
+#include <numeric>
+#include <set>
 
 namespace renderer {
 
 struct RenderSettings {
-    double width;
-    double height;
+    double width = 0.0;
+    double height = 0.0;
 
-    double padding;
+    double padding = 0.0;
 
-    double line_width;
-    double stop_radius;
+    double line_width = 0.0;
+    double stop_radius = 0.0;
 
-    int bus_label_font_size;
+    int bus_label_font_size = 0;
     svg::Point bus_label_offset;
 
-    int stop_label_font_size;
+    int stop_label_font_size = 0;
     svg::Point stop_label_offset;
 
     svg::Color underlayer_color;
-    double underlayer_width;
+    double underlayer_width = 0.0;
 
     std::vector<svg::Color> color_palette;
 };
@@ -118,20 +114,53 @@ public:
     const RenderSettings& GetSetings() const;
 
     template<typename BusIterator>
+    svg::Document RenderMap(BusIterator first, BusIterator last) const;
+
+private:
+    template<typename BusIterator>
     void RenderRoutes(BusIterator first, BusIterator last, const SphereProjector& projector, svg::Document& document) const;
 
     template<typename StopIterator>
     void RenderStops(StopIterator first, StopIterator last, const SphereProjector& projector, svg::Document& document) const;
 
-private:
     svg::Polyline RenderRouteLine(transport_catalogue::BusPtr bus, const svg::Color& color, const SphereProjector& projector) const;
 
     void RenderRouteName(const svg::Point& position, const svg::Color& color, const std::string& name, std::vector<svg::Text>& out_texts) const;
 
     void RenderStopName(const svg::Point& position, const std::string& name, svg::Document& document) const;
 
-    RenderSettings settings_;
+    const RenderSettings settings_;
 };
+
+template<typename BusIterator>
+svg::Document MapRenderer::RenderMap(BusIterator first, BusIterator last) const {
+    using namespace std;
+    using namespace transport_catalogue;
+
+    set<StopPtr, StopComparator> stops;
+    for (auto it = first; it != last; ++it) {
+        stops.insert((*it)->stops.begin(), (*it)->stops.end());
+    }
+
+    vector<geo::Coordinates> points(stops.size());
+    transform(
+        stops.begin(), stops.end(),
+        points.begin(),
+        [](const StopPtr stop){
+            return stop->coordinates;
+        }
+    );
+
+    SphereProjector projector(
+        points.begin(), points.end(), settings_.width,
+        settings_.height, settings_.padding
+    );
+
+    svg::Document document;
+    RenderRoutes(first, last, projector, document);
+    RenderStops(stops.begin(), stops.end(), projector, document);
+    return document;
+}
 
 template<typename BusIterator>
 void MapRenderer::RenderRoutes(BusIterator first, BusIterator last, const SphereProjector& projector, svg::Document& document) const {

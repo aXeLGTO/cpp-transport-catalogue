@@ -22,18 +22,11 @@ public:
     using runtime_error::runtime_error;
 };
 
-class Node {
-public:
-    using Value = std::variant<std::nullptr_t, Array, Dict, bool, int, double, std::string>;
+class Node final
+    : private std::variant<std::nullptr_t, Array, Dict, bool, int, double, std::string> {
 
-    Node() = default;
-    Node(nullptr_t);
-    Node(bool);
-    Node(int);
-    Node(double);
-    Node(std::string);
-    Node(Array);
-    Node(Dict);
+public:
+    using variant::variant;
 
     bool IsNull() const;
     bool IsBool() const;
@@ -52,10 +45,7 @@ public:
     Array AsArray() const;
     Dict AsMap() const;
 
-    const Value& GetValue() const { return value_; }
-
-private:
-    Value value_;
+    const std::variant<std::nullptr_t, Array, Dict, bool, int, double, std::string>& GetValue() const { return *this; }
 };
 
 bool operator==(const Node& lhs, const Node& rhs);
@@ -115,16 +105,5 @@ void PrintValue(Dict value, const PrintContext& ctx);
 void PrintNode(const Node& node, const PrintContext& ctx);
 
 void Print(const Document& doc, std::ostream& output);
-
-// int main() {
-//     using namespace std;
-//     istringstream strm("123.456"s);
-//     auto value = LoadNumber(strm);
-//     assert(value == Number{123.456});
-//
-//     istringstream strm2(R"(\\ABC\"   \r\n\t")");
-//     auto s = LoadString(strm2);
-//     assert(s == "\\ABC\"   \r\n\t"s);
-// }
 
 }  // namespace json

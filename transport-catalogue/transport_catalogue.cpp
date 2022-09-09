@@ -41,6 +41,34 @@ BusPtr TransportCatalogue::FindBus(string_view name) const {
     return bus_by_name_.at(name);
 }
 
+optional<BusStat> TransportCatalogue::GetBusStat(string_view bus_name) const {
+    if (const auto bus = FindBus(bus_name)) {
+        const vector<StopPtr> stops = MakeRoute(bus);
+        unordered_set<StopPtr> unique_stops(stops.begin(), stops.end());
+
+        auto coord_distance = transform_reduce(
+                next(stops.begin()), stops.end(),
+                stops.begin(),
+                0.0,
+                plus<>{},
+                [](const auto* curr, const auto* prev){
+                    return geo::ComputeDistance(prev->coordinates, curr->coordinates);
+                });
+        auto distance = transform_reduce(
+                next(stops.begin()), stops.end(),
+                stops.begin(),
+                0.0,
+                plus<>{},
+                [this](const auto* curr, const auto* prev){
+                    return GetDistance(*prev, *curr);
+                });
+
+        return optional<BusStat>{{stops.size(), unique_stops.size(), distance, distance / coord_distance}};
+    }
+
+    return nullopt;
+}
+
 const std::unordered_set<BusPtr>* TransportCatalogue::GetBusesByStop(string_view name) const {
     if (stop_by_name_.count(name) == 0) {
         return nullptr;

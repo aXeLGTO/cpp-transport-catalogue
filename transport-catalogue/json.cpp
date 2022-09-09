@@ -178,138 +178,114 @@ Node LoadNode(istream& input) {
 
     if (c == '[') {
         return LoadArray(input);
-    } else if (c == '{') {
+    }
+    if (c == '{') {
         return LoadDict(input);
-    } else if (c == '"') {
+    }
+    if (c == '"') {
         return LoadString(input);
-    } else if (c == '-' || c == '+' || isdigit(c)) {
+    }
+    if (c == '-' || c == '+' || isdigit(c)) {
         input.putback(c);
         return LoadNumber(input);
-    } else {
-        input.putback(c);
-        string value;
-        input >> setw(4) >> value;
-
-        if (value == "null"s) {
-            return {};
-        } else if (value == "true"s) {
-            return {true};
-        } else {
-            value.push_back(input.get());
-            if (value == "false"s) {
-                return {false};
-            } else {
-                throw ParsingError("An unknown value"s);
-            }
-        }
     }
-}
 
-Node::Node(nullptr_t) {
-}
+    input.putback(c);
+    string value;
+    input >> setw(4) >> value;
 
-Node::Node(bool value) :
-    value_(value) {
-}
+    if (value == "null"s) {
+        return {};
+    }
+    if (value == "true"s) {
+        return {true};
+    }
 
-Node::Node(int value)
-    : value_(value) {
-}
-
-Node::Node(double value)
-    : value_(value) {
-}
-
-Node::Node(string value)
-    : value_(move(value)) {
-}
-
-Node::Node(Array array)
-    : value_(move(array)) {
-}
-
-Node::Node(Dict map)
-    : value_(move(map)) {
+    value.push_back(input.get());
+    if (value == "false"s) {
+        return {false};
+    }
+    throw ParsingError("An unknown value"s);
 }
 
 bool Node::IsNull() const {
-    return holds_alternative<nullptr_t>(value_);
+    return holds_alternative<nullptr_t>(*this);
 }
 
 bool Node::IsBool() const {
-    return holds_alternative<bool>(value_);
+    return holds_alternative<bool>(*this);
 }
 
 bool Node::IsInt() const {
-    return holds_alternative<int>(value_);
+    return holds_alternative<int>(*this);
 }
 
 bool Node::IsDouble() const {
-    return holds_alternative<double>(value_) || holds_alternative<int>(value_);;
+    return holds_alternative<double>(*this) || holds_alternative<int>(*this);;
 }
 
 bool Node::IsPureDouble() const {
-    return holds_alternative<double>(value_);
+    return holds_alternative<double>(*this);
 }
 
 bool Node::IsString() const {
-    return holds_alternative<string>(value_);
+    return holds_alternative<string>(*this);
 }
 
 bool Node::IsArray() const {
-    return holds_alternative<Array>(value_);
+    return holds_alternative<Array>(*this);
 }
 
 bool Node::IsMap() const {
-    return holds_alternative<Dict>(value_);
+    return holds_alternative<Dict>(*this);
 }
 
 int Node::AsBool() const {
-    if (auto* val = get_if<bool>(&value_)) {
+    if (auto* val = get_if<bool>(this)) {
         return *val;
     }
     throw logic_error("Node value is not bool"s);
 }
 
 int Node::AsInt() const {
-    if (auto* val = get_if<int>(&value_)) {
+    if (auto* val = get_if<int>(this)) {
         return *val;
     }
     throw logic_error("Node value is not int"s);
 }
 
 double Node::AsDouble() const {
-    if (auto* val = get_if<double>(&value_)) {
+    if (auto* val = get_if<double>(this)) {
         return *val;
-    } else if (auto* val = get_if<int>(&value_)) {
+    } else if (auto* val = get_if<int>(this)) {
         return *val;
     }
     throw logic_error("Node value is not double"s);
 }
 
 double Node::AsPureDouble() const {
-    if (auto* val = get_if<double>(&value_)) {
+    if (auto* val = get_if<double>(this)) {
         return *val;
     }
     throw logic_error("Node value is not pure double"s);
 }
 
 string Node::AsString() const {
-    if (auto* val = get_if<string>(&value_)) {
+    if (auto* val = get_if<string>(this)) {
         return *val;
     }
     throw logic_error("Node value is not string"s);
 }
 
 Array Node::AsArray() const {
-    if (auto* val = get_if<Array>(&value_)) {
+    if (auto* val = get_if<Array>(this)) {
         return *val;
     }
     throw logic_error("Node value is not array"s);
 }
 
 Dict Node::AsMap() const {
-    if (auto* val = get_if<Dict>(&value_)) {
+    if (auto* val = get_if<Dict>(this)) {
         return *val;
     }
     throw logic_error("Node value is not dict"s);
@@ -324,7 +300,7 @@ bool operator!=(const Node& lhs, const Node& rhs) {
 }
 
 bool operator==(const Document& lhs, const Document& rhs) {
-    return lhs.GetRoot().GetValue() == rhs.GetRoot().GetValue();
+    return lhs.GetRoot() == rhs.GetRoot();
 }
 
 bool operator!=(const Document& lhs, const Document& rhs) {
