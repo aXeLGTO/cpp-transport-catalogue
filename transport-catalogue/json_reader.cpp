@@ -1,5 +1,6 @@
 #include "json_reader.h"
 #include "json.h"
+#include "json_builder.h"
 #include "map_renderer.h"
 #include "request_handler.h"
 #include "svg.h"
@@ -22,7 +23,7 @@ using namespace json;
 using namespace renderer;
 
 RenderSettings ParseRenderSettings(const json::Document& document) {
-    const auto& settings = document.GetRoot().AsMap().at("render_settings"s).AsMap();
+    const auto& settings = document.GetRoot().AsDict().at("render_settings"s).AsDict();
     vector<svg::Color> color_palette;
     for (const auto& color : settings.at("color_palette"s).AsArray()) {
         color_palette.push_back(details::ParseColor(color));
@@ -44,20 +45,20 @@ RenderSettings ParseRenderSettings(const json::Document& document) {
 }
 
 void ParseBaseRequests(TransportCatalogue& catalogue, const json::Document& document) {
-    const auto requests = document.GetRoot().AsMap().at("base_requests"s).AsArray();
+    const auto requests = document.GetRoot().AsDict().at("base_requests"s).AsArray();
     for (const auto& req : requests) {
-        const auto& type = req.AsMap().at("type"s).AsString();
+        const auto& type = req.AsDict().at("type"s).AsString();
 
         if (type == "Stop"s) {
-            catalogue.AddStop({req.AsMap().at("name"s).AsString(), {
-                req.AsMap().at("latitude"s).AsDouble(),
-                req.AsMap().at("longitude"s).AsDouble()
+            catalogue.AddStop({req.AsDict().at("name"s).AsString(), {
+                req.AsDict().at("latitude"s).AsDouble(),
+                req.AsDict().at("longitude"s).AsDouble()
             }});
         }
     }
 
     for (const auto& req : requests) {
-        const auto type = req.AsMap().at("type"s).AsString();
+        const auto type = req.AsDict().at("type"s).AsString();
 
         if (type == "Stop"s) {
             details::ParseInputDistanceRequest(catalogue, req);
@@ -69,8 +70,8 @@ void ParseBaseRequests(TransportCatalogue& catalogue, const json::Document& docu
 
 void ParseStatRequests(const RequestHandler& req_handler, const Document& document, ostream& out) {
     Array responses;
-    for (const auto& req : document.GetRoot().AsMap().at("stat_requests"s).AsArray()) {
-        const auto type = req.AsMap().at("type"s).AsString();
+    for (const auto& req : document.GetRoot().AsDict().at("stat_requests"s).AsArray()) {
+        const auto type = req.AsDict().at("type"s).AsString();
         if (type == "Stop"s) {
             responses.push_back(details::ParseOutputStopRequest(req_handler, req));
         } else if (type == "Bus"s) {
@@ -110,8 +111,8 @@ svg::Color ParseColor(const json::Node& color) {
 }
 
 void ParseInputDistanceRequest(TransportCatalogue& catalogue, const Node& request) {
-    const auto from = request.AsMap().at("name"s).AsString();
-    for (const auto& [to, distance] : request.AsMap().at("road_distances"s).AsMap()) {
+    const auto from = request.AsDict().at("name"s).AsString();
+    for (const auto& [to, distance] : request.AsDict().at("road_distances"s).AsDict()) {
         catalogue.SetDistance(
             catalogue.FindStop(from),
             catalogue.FindStop(to),
@@ -120,7 +121,7 @@ void ParseInputDistanceRequest(TransportCatalogue& catalogue, const Node& reques
 }
 
 void ParseInputBusRequest(TransportCatalogue& catalogue, const Node& request) {
-    auto dict = request.AsMap();
+    auto dict = request.AsDict();
     bool is_roundtrip = dict.at("is_roundtrip"s).AsBool();
 
     vector<StopPtr> stops;
@@ -132,37 +133,45 @@ void ParseInputBusRequest(TransportCatalogue& catalogue, const Node& request) {
 }
 
 Node ParseOutputStopRequest(const RequestHandler& req_handler, const Node& req) {
-    if (const auto* buses = req_handler.GetBusesByStop(req.AsMap().at("name"s).AsString())) {
+    if (const auto* buses = req_handler.GetBusesByStop(req.AsDict().at("name"s).AsString())) {
         set<string> bus_names;
         for (const auto* bus : *buses) {
             bus_names.insert(bus->name);
         }
-        return {Dict{
-            {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
-            {"buses"s, {Array{bus_names.begin(), bus_names.end()}}}
-        }};
+        return Builder{}
+            .StartDict()
+                .Key("request_id"s).Value(req.AsDict().at("id"s).AsInt())
+                .Key("bases"s).Value(Array{bus_names.begin(), bus_names.end()})
+            .EndDict()
+            .Build();
     } else {
-        return {Dict{
-            {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
-            {"error_message"s, {"not found"s}}
-        }};
+        return Builder{}
+            .StartDict()
+                .Key("request_id"s).Value(req.AsDict().at("id"s).AsInt())
+                .Key("error_message"s).Value("not found"s)
+            .EndDict()
+            .Build();
     }
 }
 
 Node ParseOutputBusRequest(const RequestHandler& req_handler, const Node& req) {
-    if (const auto bus_stat = req_handler.GetBusStat(req.AsMap().at("name"s).AsString())) {
-        return {Dict{
-            {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
-            {"curvature"s, {bus_stat->curvature}},
-            {"route_length"s, {bus_stat->route_length}},
-            {"stop_count"s, {static_cast<int>(bus_stat->stops_amount)}},
-            {"unique_stop_count"s, {static_cast<int>(bus_stat->unique_stops_amount)}},
-        }};
+    if (const auto bus_stat = req_handler.GetBusStat(req.AsDict().at("name"s).AsString())) {
+        return Builder{}
+            .StartDict()
+                .Key("request_id"s).Value(req.AsDict().at("id"s).AsInt())
+                .Key("curvature"s).Value("not found"s)
+                .Key("route_length"s).Value(bus_stat->route_length)
+                .Key("stop_count"s).Value(bus_stat->route_length)
+                .Key("unique_stop_count"s).Value(static_cast<int>(bus_stat->unique_stops_amount))
+            .EndDict()
+            .Build();
     } else {
-        return {Dict{
-            {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
-            {"error_message"s, {"not found"s}}
-        }};
+        return Builder{}
+            .StartDict()
+                .Key("request_id"s).Value(req.AsDict().at("id"s).AsInt())
+                .Key("error_message"s).Value("not found"s)
+            .EndDict()
+            .Build();
     }
 }
 
@@ -170,10 +179,12 @@ Node ParseOutputMapRequest(const RequestHandler& req_handler, const Node& req) {
     ostringstream out;
     req_handler.RenderMap().Render(out);
 
-    return {Dict{
-        {"request_id"s, {req.AsMap().at("id"s).AsInt()}},
-        {"map", {out.str()}}
-    }};
+    return Builder{}
+        .StartDict()
+            .Key("request_id"s).Value(req.AsDict().at("id"s).AsInt())
+            .Key("map"s).Value(out.str())
+        .EndDict()
+        .Build();
 }
 
 } // namespace details
