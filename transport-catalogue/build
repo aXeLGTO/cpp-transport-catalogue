@@ -1,0 +1,1 @@
+gfilt `ls *.cpp` -o catalogue

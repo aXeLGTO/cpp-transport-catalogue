@@ -44,6 +44,14 @@ RenderSettings ParseRenderSettings(const json::Document& document) {
     };
 }
 
+transport_catalogue::RoutingSettings ParseRoutingSettings(const json::Document& document) {
+    const auto& settings = document.GetRoot().AsDict().at("routing_settings"s).AsDict();
+    return {
+        settings.at("bus_wait_time"s).AsDouble(),
+        settings.at("bus_velocity"s).AsDouble(),
+    };
+}
+
 void ParseBaseRequests(TransportCatalogue& catalogue, const json::Document& document) {
     const auto requests = document.GetRoot().AsDict().at("base_requests"s).AsArray();
     for (const auto& req : requests) {
@@ -78,6 +86,8 @@ void ParseStatRequests(const RequestHandler& req_handler, const Document& docume
             responses.push_back(details::ParseOutputBusRequest(req_handler, req));
         } else if (type == "Map"s) {
             responses.push_back(details::ParseOutputMapRequest(req_handler, req));
+        } else if (type == "Route"s) {
+            responses.push_back(details::ParseOutputRouteRequest(req_handler, req));
         }
     }
 
@@ -141,7 +151,7 @@ Node ParseOutputStopRequest(const RequestHandler& req_handler, const Node& req) 
         return Builder{}
             .StartDict()
                 .Key("request_id"s).Value(req.AsDict().at("id"s).AsInt())
-                .Key("bases"s).Value(Array{bus_names.begin(), bus_names.end()})
+                .Key("buses"s).Value(Array{bus_names.begin(), bus_names.end()})
             .EndDict()
             .Build();
     } else {
@@ -159,9 +169,9 @@ Node ParseOutputBusRequest(const RequestHandler& req_handler, const Node& req) {
         return Builder{}
             .StartDict()
                 .Key("request_id"s).Value(req.AsDict().at("id"s).AsInt())
-                .Key("curvature"s).Value("not found"s)
+                .Key("curvature"s).Value(bus_stat->curvature)
                 .Key("route_length"s).Value(bus_stat->route_length)
-                .Key("stop_count"s).Value(bus_stat->route_length)
+                .Key("stop_count"s).Value(static_cast<int>(bus_stat->stops_amount))
                 .Key("unique_stop_count"s).Value(static_cast<int>(bus_stat->unique_stops_amount))
             .EndDict()
             .Build();
@@ -185,6 +195,58 @@ Node ParseOutputMapRequest(const RequestHandler& req_handler, const Node& req) {
             .Key("map"s).Value(out.str())
         .EndDict()
         .Build();
+}
+
+Node ParseOutputRouteRequest(const RequestHandler& req_handler, const Node& req) {
+    const auto from = req.AsDict().at("from"s).AsString();
+    const auto to = req.AsDict().at("to"s).AsString();
+
+    if (auto result = req_handler.BuildRoute(from, to)) {
+        const auto [total_time, route_items] = *result;
+
+        Builder itemsBuilder;
+        auto arrayBuilder = itemsBuilder.StartArray();
+        for (const auto& item : route_items) {
+            if (item.type == RouteItemType::Wait) {
+                arrayBuilder.Value(Builder{}
+                    .StartDict()
+                        .Key("type"s).Value("Wait"s)
+                        .Key("stop_name"s).Value(item.stop_name)
+                        .Key("time"s).Value(item.time)
+                    .EndDict()
+                    .Build()
+                    .AsDict()
+                );
+            } else {
+                arrayBuilder.Value(Builder{}
+                    .StartDict()
+                        .Key("type"s).Value("Bus"s)
+                        .Key("bus"s).Value(item.bus_name)
+                        .Key("span_count"s).Value(item.span_count)
+                        .Key("time"s).Value(item.time)
+                    .EndDict()
+                    .Build()
+                    .AsDict()
+                );
+            }
+        }
+        arrayBuilder.EndArray();
+
+        return Builder{}
+            .StartDict()
+                .Key("request_id"s).Value(req.AsDict().at("id"s).AsInt())
+                .Key("total_time"s).Value(total_time)
+                .Key("items"s).Value(itemsBuilder.Build().AsArray())
+            .EndDict()
+            .Build();
+    } else {
+        return Builder{}
+            .StartDict()
+                .Key("request_id"s).Value(req.AsDict().at("id"s).AsInt())
+                .Key("error_message"s).Value("not found"s)
+            .EndDict()
+            .Build();
+    }
 }
 
 } // namespace details

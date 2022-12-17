@@ -3,6 +3,7 @@
 #include "map_renderer.h"
 #include "svg.h"
 
+#include <utility>
 #include <vector>
 
 namespace transport_catalogue {
@@ -10,9 +11,10 @@ namespace transport_catalogue {
 using namespace std;
 using namespace renderer;
 
-RequestHandler::RequestHandler(const TransportCatalogue& db, const MapRenderer& renderer) :
+RequestHandler::RequestHandler(const TransportCatalogue& db, const MapRenderer& renderer, const TransportRouter& router) :
     db_(db),
-    renderer_(renderer) {
+    renderer_(renderer),
+    router_(router) {
 }
 
 std::optional<BusStat> RequestHandler::GetBusStat(const std::string_view& bus_name) const {
@@ -32,6 +34,10 @@ svg::Document RequestHandler::RenderMap() const {
     }
 
     return renderer_.RenderMap(buses.begin(), buses.end());
+}
+
+optional<TransportRouter::RouteResult> RequestHandler::BuildRoute(string_view from, string_view to) const {
+    return router_.BuildRoute(db_.FindStop(from), db_.FindStop(to));
 }
 
 } // namespace transport_catalogue {

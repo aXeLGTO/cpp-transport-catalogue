@@ -2,6 +2,10 @@
 #include "domain.h"
 #include "transport_catalogue.h"
 #include "map_renderer.h"
+#include "transport_router.h"
+
+#include <utility>
+#include <optional>
 
 /*
  * Здесь можно было бы разместить код обработчика запросов к базе, содержащего логику, которую не
@@ -22,7 +26,7 @@ namespace transport_catalogue {
 class RequestHandler {
 public:
     // MapRenderer понадобится в следующей части итогового проекта
-    RequestHandler(const TransportCatalogue& db, const renderer::MapRenderer& renderer);
+    RequestHandler(const TransportCatalogue& db, const renderer::MapRenderer& renderer, const TransportRouter& router);
 
     // Возвращает информацию о маршруте (запрос Bus)
     std::optional<BusStat> GetBusStat(const std::string_view& bus_name) const;
@@ -33,10 +37,13 @@ public:
     // Этот метод будет нужен в следующей части итогового проекта
     svg::Document RenderMap() const;
 
+    std::optional<TransportRouter::RouteResult> BuildRoute(std::string_view from, std::string_view to) const;
+
 private:
     // RequestHandler использует агрегацию объектов "Транспортный Справочник" и "Визуализатор Карты"
     const TransportCatalogue& db_;
     const renderer::MapRenderer& renderer_;
+    const TransportRouter& router_;
 };
 
 } // namespace transport_catalogue

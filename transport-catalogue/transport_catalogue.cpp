@@ -15,7 +15,9 @@ namespace transport_catalogue {
 
 void TransportCatalogue::AddStop(const Stop& stop) {
     stops_.push_back(move(stop));
+
     auto* ptr_stop = &stops_.back();
+
     stop_by_name_[ptr_stop->name] = ptr_stop;
     stop_to_buses_.insert({ptr_stop, {}});
 }
@@ -54,6 +56,7 @@ optional<BusStat> TransportCatalogue::GetBusStat(string_view bus_name) const {
                 [](const auto* curr, const auto* prev){
                     return geo::ComputeDistance(prev->coordinates, curr->coordinates);
                 });
+
         auto distance = transform_reduce(
                 next(stops.begin()), stops.end(),
                 stops.begin(),
@@ -91,6 +94,18 @@ double TransportCatalogue::GetDistance(const Stop& from, const Stop& to) const {
 
 size_t TransportCatalogue::GetBusesCount() const {
     return buses_.size();
+}
+
+size_t TransportCatalogue::GetStopsCount() const {
+    return stops_.size();
+}
+
+ranges::Range<std::deque<Stop>::const_iterator> TransportCatalogue::GetStopsRange() const {
+    return ranges::AsRange(stops_);
+}
+
+ranges::Range<std::deque<Bus>::const_iterator> TransportCatalogue::GetBusesRange() const {
+    return ranges::AsRange(buses_);
 }
 
 } // namespace transport_catalogue

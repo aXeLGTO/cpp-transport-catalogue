@@ -26,4 +26,10 @@ vector<StopPtr> MakeRoute(BusPtr bus) {
     return stops;
 }
 
+vector<StopPtr> MakeRoute(const Bus& bus) {
+    std::vector<StopPtr> stops;
+    MakeRoute(bus.stops.begin(), bus.stops.end(), stops, bus.is_roundtrip);
+    return stops;
+}
+
 } // namespace transport_catalogue

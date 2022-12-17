@@ -1,6 +1,7 @@
 #pragma once
 
 #include "domain.h"
+#include "ranges.h"
 #include <optional>
 #include <string_view>
 #include <deque>
@@ -52,6 +53,12 @@ public:
     double GetDistance(const Stop& from, const Stop& to) const;
 
     size_t GetBusesCount() const;
+
+    size_t GetStopsCount() const;
+
+    ranges::Range<std::deque<Stop>::const_iterator> GetStopsRange() const;
+
+    ranges::Range<std::deque<Bus>::const_iterator> GetBusesRange() const;
 
 private:
     std::deque<Stop> stops_;

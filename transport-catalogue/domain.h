@@ -47,6 +47,7 @@ struct StopComparator {
 };
 
 std::vector<StopPtr> MakeRoute(BusPtr bus);
+std::vector<StopPtr> MakeRoute(const Bus& bus);
 
 template<typename Iterator>
 void MakeRoute(Iterator first, Iterator last, std::vector<StopPtr> &out_stops, bool is_roundtrip) {

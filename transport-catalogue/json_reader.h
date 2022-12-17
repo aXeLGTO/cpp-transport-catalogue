@@ -3,6 +3,7 @@
 #include "map_renderer.h"
 #include "request_handler.h"
 #include "json.h"
+#include "transport_router.h"
 
 #include <iostream>
 #include <unordered_set>
@@ -15,6 +16,8 @@
 namespace transport_catalogue {
 
 renderer::RenderSettings ParseRenderSettings(const json::Document& document);
+
+transport_catalogue::RoutingSettings ParseRoutingSettings(const json::Document& document);
 
 void ParseBaseRequests(TransportCatalogue& catalogue, const json::Document& document);
 
@@ -35,6 +38,8 @@ json::Node ParseOutputStopRequest(const RequestHandler& request_handler, const j
 json::Node ParseOutputBusRequest(const RequestHandler& request_handler, const json::Node& request);
 
 json::Node ParseOutputMapRequest(const RequestHandler& req_handler, const json::Node& req);
+
+json::Node ParseOutputRouteRequest(const RequestHandler& req_handler, const json::Node& req);
 
 } // namespace details
 
