@@ -13,8 +13,8 @@ TransportRouter::TransportRouter(RoutingSettings settings, const TransportCatalo
     settings_(move(settings)),
     graph_(db.GetStopsCount() * 2) {
 
-    FillGraphWithStops(db);
-    FillGraphWithBuses(db);
+    // FillGraphWithStops(db);
+    // FillGraphWithBuses(db);
 
     router_ = make_unique<graph::Router<double>>(graph_);
 }

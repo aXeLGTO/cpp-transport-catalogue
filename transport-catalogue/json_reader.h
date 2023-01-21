@@ -17,6 +17,8 @@ namespace transport_catalogue {
 
 renderer::RenderSettings ParseRenderSettings(const json::Document& document);
 
+transport_catalogue::SerializationSettings ParseSerializationSettings(const json::Document& document);
+
 transport_catalogue::RoutingSettings ParseRoutingSettings(const json::Document& document);
 
 void ParseBaseRequests(TransportCatalogue& catalogue, const json::Document& document);

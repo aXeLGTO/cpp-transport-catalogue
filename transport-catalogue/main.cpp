@@ -4,28 +4,53 @@
 #include "transport_catalogue.h"
 #include "transport_router.h"
 #include "router.h"
+
+#include <fstream>
+#include <iostream>
+#include <string_view>
+
 // #include "tests.h"
 
 using namespace std;
 using namespace transport_catalogue;
 using namespace renderer;
 
-int main() {
+void PrintUsage(std::ostream& stream = std::cerr) {
+    stream << "Usage: transport_catalogue [make_base|process_requests]\n"sv;
+}
+
+int main(int argc, char* argv[]) {
     // TestAll();
 
+    if (argc != 2) {
+        PrintUsage();
+        return 1;
+    }
+
     const auto& document = json::Load(cin);
-
+    const auto& serialization_settings = ParseSerializationSettings(document);
     TransportCatalogue catalogue;
-    ParseBaseRequests(catalogue, document);
 
-    MapRenderer renderer(ParseRenderSettings(document));
+    const std::string_view mode(argv[1]);
+    if (mode == "make_base"sv) {
+        ParseBaseRequests(catalogue, document);
 
-    TransportRouter route_manager(ParseRoutingSettings(document), catalogue);
+        ofstream ofs(serialization_settings.file, ios::binary);
+        catalogue.SaveTo(ofs);
+    } else if (mode == "process_requests"sv) {
+        ifstream ifs(serialization_settings.file, ios::binary);
+        DeserializeTransportCatalogue(ifs, catalogue);
 
-    RequestHandler request_handler(catalogue, renderer, route_manager);
-    ParseStatRequests(request_handler, document, cout);
+        MapRenderer renderer(ParseRenderSettings(document));
 
-    // request_handler.RenderMap().Render(cout);
+        TransportRouter route_manager(ParseRoutingSettings(document), catalogue);
 
-    return 0;
+        RequestHandler request_handler(catalogue, renderer, route_manager);
+        ParseStatRequests(request_handler, document, cout);
+
+        // request_handler.RenderMap().Render(cout);
+    } else {
+        PrintUsage();
+        return 1;
+    }
 }

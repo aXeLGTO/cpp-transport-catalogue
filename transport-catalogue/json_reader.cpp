@@ -44,6 +44,13 @@ RenderSettings ParseRenderSettings(const json::Document& document) {
     };
 }
 
+transport_catalogue::SerializationSettings ParseSerializationSettings(const json::Document& document) {
+    const auto& settings = document.GetRoot().AsDict().at("serialization_settings"s).AsDict();
+    return {
+        settings.at("file"s).AsString()
+    };
+}
+
 transport_catalogue::RoutingSettings ParseRoutingSettings(const json::Document& document) {
     const auto& settings = document.GetRoot().AsDict().at("routing_settings"s).AsDict();
     return {

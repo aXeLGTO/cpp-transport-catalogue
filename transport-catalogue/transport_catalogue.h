@@ -60,6 +60,8 @@ public:
 
     ranges::Range<std::deque<Bus>::const_iterator> GetBusesRange() const;
 
+    void SaveTo(std::ostream& output) const;
+
 private:
     std::deque<Stop> stops_;
     StopIndexMap stop_by_name_;
@@ -70,5 +72,7 @@ private:
     StopBusesIndexMap stop_to_buses_;
     std::unordered_map<StopsPair, double, StopsPairHasher> stops_to_distance_;
 };
+
+void DeserializeTransportCatalogue(std::istream& input, TransportCatalogue& catalogue);
 
 } // namespace transport_catalogue

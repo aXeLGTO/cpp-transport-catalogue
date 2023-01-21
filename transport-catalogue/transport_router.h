@@ -10,6 +10,10 @@
 
 namespace transport_catalogue {
 
+struct SerializationSettings {
+    std::string file;
+};
+
 struct RoutingSettings {
     double bus_wait_time;
     double bus_velocity;
