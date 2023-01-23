@@ -13,7 +13,8 @@ set(TRANSPORT_CATALOGUE_FILES domain.h domain.cpp geo.h geo.cpp graph.h
     json_reader.cpp main.cpp map_renderer.h map_renderer.cpp ranges.h
     request_handler.h request_handler.cpp router.h svg.h svg.cpp
     transport_catalogue.h transport_catalogue.cpp transport_router.h
-    transport_router.cpp transport_catalogue.proto)
+    transport_router.cpp serialization.h serialization.cpp
+    transport_catalogue.proto)
 
 add_executable(transport_catalogue ${PROTO_SRCS} ${PROTO_HDRS} ${TRANSPORT_CATALOGUE_FILES})
 target_include_directories(transport_catalogue PUBLIC ${Protobuf_INCLUDE_DIRS})

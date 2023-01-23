@@ -4,6 +4,7 @@
 #include "transport_catalogue.h"
 #include "transport_router.h"
 #include "router.h"
+#include "serialization.h"
 
 #include <fstream>
 #include <iostream>
@@ -14,6 +15,7 @@
 using namespace std;
 using namespace transport_catalogue;
 using namespace renderer;
+using namespace transport_catalogue_serialize;
 
 void PrintUsage(std::ostream& stream = std::cerr) {
     stream << "Usage: transport_catalogue [make_base|process_requests]\n"sv;
@@ -29,17 +31,17 @@ int main(int argc, char* argv[]) {
 
     const auto& document = json::Load(cin);
     const auto& serialization_settings = ParseSerializationSettings(document);
-    TransportCatalogue catalogue;
 
     const std::string_view mode(argv[1]);
     if (mode == "make_base"sv) {
+        TransportCatalogue catalogue;
         ParseBaseRequests(catalogue, document);
 
         ofstream ofs(serialization_settings.file, ios::binary);
-        catalogue.SaveTo(ofs);
+        SerializeTransportCatalogue(catalogue, ofs);
     } else if (mode == "process_requests"sv) {
         ifstream ifs(serialization_settings.file, ios::binary);
-        DeserializeTransportCatalogue(ifs, catalogue);
+        TransportCatalogue catalogue = DeserializeTransportCatalogue(ifs);
 
         MapRenderer renderer(ParseRenderSettings(document));
 

@@ -27,6 +27,7 @@ public:
     using BusIndexMap = std::map<std::string_view, BusPtr>;
     using StopBusesIndexMap = std::unordered_map<StopPtr, std::unordered_set<BusPtr>>;
     using StopsPair = std::pair<StopPtr, StopPtr>;
+    using StopDistancesMap = std::unordered_map<StopsPair, double, StopsPairHasher>;
 
     auto begin() const {
         return bus_by_name_.begin();
@@ -60,7 +61,7 @@ public:
 
     ranges::Range<std::deque<Bus>::const_iterator> GetBusesRange() const;
 
-    void SaveTo(std::ostream& output) const;
+    ranges::Range<StopDistancesMap::const_iterator> GetStopsDistanceRange() const;
 
 private:
     std::deque<Stop> stops_;
@@ -70,9 +71,7 @@ private:
     BusIndexMap bus_by_name_;
 
     StopBusesIndexMap stop_to_buses_;
-    std::unordered_map<StopsPair, double, StopsPairHasher> stops_to_distance_;
+    StopDistancesMap stops_to_distance_;
 };
-
-void DeserializeTransportCatalogue(std::istream& input, TransportCatalogue& catalogue);
 
 } // namespace transport_catalogue
