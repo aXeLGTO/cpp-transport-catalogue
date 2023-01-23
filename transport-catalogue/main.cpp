@@ -15,7 +15,6 @@
 using namespace std;
 using namespace transport_catalogue;
 using namespace renderer;
-using namespace transport_catalogue_serialize;
 
 void PrintUsage(std::ostream& stream = std::cerr) {
     stream << "Usage: transport_catalogue [make_base|process_requests]\n"sv;
@@ -38,14 +37,18 @@ int main(int argc, char* argv[]) {
         ParseBaseRequests(catalogue, document);
 
         ofstream ofs(serialization_settings.file, ios::binary);
-        SerializeTransportCatalogue(catalogue, ofs);
+        transport_catalogue_serialize::SerializeTransportCatalogue(catalogue, ParseRenderSettings(document), ofs);
     } else if (mode == "process_requests"sv) {
+        TransportCatalogue catalogue;
+        RenderSettings render_settings;
+
         ifstream ifs(serialization_settings.file, ios::binary);
-        TransportCatalogue catalogue = DeserializeTransportCatalogue(ifs);
+        transport_catalogue_serialize::DeserializeTransportCatalogue(ifs, catalogue, render_settings);
 
-        MapRenderer renderer(ParseRenderSettings(document));
+        MapRenderer renderer(render_settings);
 
-        TransportRouter route_manager(ParseRoutingSettings(document), catalogue);
+        TransportRouter route_manager({}, catalogue);
+        // TransportRouter route_manager(ParseRoutingSettings(document), catalogue);
 
         RequestHandler request_handler(catalogue, renderer, route_manager);
         ParseStatRequests(request_handler, document, cout);
