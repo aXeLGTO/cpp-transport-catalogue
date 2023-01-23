@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package transport_catalogue_serialize;
 
+import "map_renderer.proto";
+
 message Stop {
     string name = 1;
     double lat = 2;
@@ -21,53 +23,6 @@ message Bus {
 
 message BusList {
     repeated Bus bus = 1;
-}
-
-message Point {
-    double x = 1;
-    double y = 2;
-}
-
-message Rgba {
-    int32 red = 1;
-    int32 green = 2;
-    int32 blue = 3;
-    double opacity = 4;
-}
-
-message Rgb {
-    int32 red = 1;
-    int32 green = 2;
-    int32 blue = 3;
-}
-
-message Color {
-oneof color_oneof {
-    string name = 1;
-    Rgba rgba = 2;
-    Rgb rgb = 3;
-  }
-}
-
-message RenderSettings {
-    double width = 1;
-    double height = 2;
-
-    double padding = 3;
-
-    double line_width = 4;
-    double stop_radius = 5;
-
-    int32 bus_label_font_size = 6;
-    Point bus_label_offset = 7;
-
-    int32 stop_label_font_size = 8;
-    Point stop_label_offset = 9;
-
-    Color underlayer_color = 10;
-    double underlayer_width = 11;
-
-    repeated Color color_palette = 12;
 }
 
 message Database {
