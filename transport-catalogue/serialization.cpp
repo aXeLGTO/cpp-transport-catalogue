@@ -1,28 +1,52 @@
 #include "serialization.h"
 #include "domain.h"
+#include "map_renderer.h"
+#include "transport_catalogue.h"
 
 using namespace std;
 
 namespace transport_catalogue_serialize {
 
-void SerializeTransportCatalogue(const transport_catalogue::TransportCatalogue &catalogue, const renderer::RenderSettings& settings, std::ostream &output) {
+void Serialize(const transport_catalogue::TransportCatalogue& transport_catalogue,
+               const renderer::MapRenderer& map_renderer,
+               const transport_catalogue::TransportRouter& transport_router,
+               std::ostream &output) {
+    Database database;
+    *database.mutable_transport_catalogue() = details::Serialize(transport_catalogue);
+    *database.mutable_map_renderer() = details::Serialize(map_renderer);
+    *database.mutable_transport_router() = details::Serialize(transport_router);
+    database.SerializeToOstream(&output);
+}
+
+optional<DeserializeResult> Deserialize(istream& input) {
     using namespace transport_catalogue;
 
-    unordered_map<StopPtr, int> stop_to_id;
-
-    StopList stop_list;
-    for (const auto& stop : catalogue.GetStopsRange()) {
-        Stop stop_raw;
-
-        SET_X(stop, stop_raw, name);
-        SET_X(stop.coordinates, stop_raw, lat);
-        SET_X(stop.coordinates, stop_raw, lng);
-
-        stop_to_id[&stop] = stop_list.stop_size();
-        *stop_list.add_stop() = move(stop_raw);
+    Database database;
+    if (!database.ParseFromIstream(&input)) {
+        return nullopt;
     }
 
-    for (const auto& [stops, distance] : catalogue.GetStopsDistanceRange()) {
+    DeserializeResult result{
+        details::Deserialize(database.transport_catalogue()),
+        details::Deserialize(database.map_renderer()),
+        details::Deserialize(database.transport_router())
+    };
+
+    return {move(result)};
+}
+
+namespace details {
+
+TransportCatalogue Serialize(const transport_catalogue::TransportCatalogue& transport_catalogue) {
+    unordered_map<transport_catalogue::StopPtr, int> stop_to_id;
+
+    StopList stop_list;
+    for (const auto& stop : transport_catalogue.GetStopsRange()) {
+        stop_to_id[&stop] = stop_list.stop_size();
+        *stop_list.add_stop() = Serialize(stop);
+    }
+
+    for (const auto& [stops, distance] : transport_catalogue.GetStopsDistanceRange()) {
         const auto& [from, to] = stops;
         int from_id = stop_to_id[from];
         int to_id = stop_to_id[to];
@@ -32,212 +56,255 @@ void SerializeTransportCatalogue(const transport_catalogue::TransportCatalogue &
     }
 
     BusList bus_list;
-    for (const auto& bus : catalogue.GetBusesRange()) {
-        Bus bus_raw;
-
-        SET_X(bus, bus_raw, name);
-        SET_X(bus, bus_raw, is_roundtrip);
-
-        for (StopPtr stop : bus.stops) {
-            bus_raw.add_stop_id(stop_to_id[stop]);
+    for (const auto& bus : transport_catalogue.GetBusesRange()) {
+        auto object = Serialize(bus);
+        for (auto* stop : bus.stops) {
+            object.add_stop_id(stop_to_id[stop]);
         }
-
-        *bus_list.add_bus() = move(bus_raw);
+        *bus_list.add_bus() = move(object);
     }
 
-    Database database;
-    *database.mutable_stop_list() = move(stop_list);
-    *database.mutable_bus_list() = move(bus_list);
-    *database.mutable_render_settings() = details::SerializeRenderSetings(settings);
-    database.SerializeToOstream(&output);
+    TransportCatalogue object;
+    *object.mutable_stop_list() = move(stop_list);
+    *object.mutable_bus_list() = move(bus_list);
+    return object;
 }
 
-bool DeserializeTransportCatalogue(istream& input, transport_catalogue::TransportCatalogue& catalogue, renderer::RenderSettings& render_settings) {
-    using namespace transport_catalogue;
-
-    Database database;
-    if (!database.ParseFromIstream(&input)) {
-        return false;
-    }
-
-    const auto& stop_list = database.stop_list();
-    vector<StopPtr> all_stops;
+transport_catalogue::TransportCatalogue Deserialize(const TransportCatalogue& object) {
+    transport_catalogue::TransportCatalogue transport_catalogue;
+    const auto& stop_list = object.stop_list();
+    vector<transport_catalogue::StopPtr> all_stops;
     all_stops.reserve(stop_list.stop_size());
 
     for (int stop_id = 0; stop_id < stop_list.stop_size(); ++stop_id) {
         const auto& stop_raw = stop_list.stop(stop_id);
 
-        catalogue.AddStop({stop_raw.name(), {
+        transport_catalogue.AddStop({stop_raw.name(), {
             stop_raw.lat(),
             stop_raw.lng()
         }});
 
-        all_stops.push_back(&catalogue.FindStop(stop_raw.name()));
+        all_stops.push_back(&transport_catalogue.FindStop(stop_raw.name()));
     }
 
     for (int from_id = 0; from_id < stop_list.stop_size(); ++from_id) {
-        const auto& from_raw = stop_list.stop(from_id);
-        const auto& from = catalogue.FindStop(from_raw.name());
+        const auto& stop = stop_list.stop(from_id);
+        const auto& from = transport_catalogue.FindStop(stop.name());
 
-        for (const auto& [to_id, distance] : from_raw.distance()) {
-            const auto& to_raw = stop_list.stop(to_id);
-
-            catalogue.SetDistance(
+        for (const auto& [to_id, distance] : stop.distance()) {
+            transport_catalogue.SetDistance(
                 from,
-                catalogue.FindStop(to_raw.name()),
+                transport_catalogue.FindStop(stop_list.stop(to_id).name()),
                 distance
             );
         }
     }
 
-    const auto& bus_list = database.bus_list();
+    const auto& bus_list = object.bus_list();
 
     for (int bus_id = 0; bus_id < bus_list.bus_size(); ++bus_id) {
-        const auto& bus_raw = bus_list.bus(bus_id);
+        const auto& bus = bus_list.bus(bus_id);
 
-        vector<StopPtr> bus_stops;
-        bus_stops.reserve(bus_raw.stop_id_size());
+        vector<transport_catalogue::StopPtr> bus_stops;
+        bus_stops.reserve(bus.stop_id_size());
 
-        for (int stop_id = 0; stop_id < bus_raw.stop_id_size(); ++stop_id) {
-            bus_stops.push_back(all_stops[bus_raw.stop_id(stop_id)]);
+        for (int stop_id = 0; stop_id < bus.stop_id_size(); ++stop_id) {
+            bus_stops.push_back(all_stops[bus.stop_id(stop_id)]);
         }
 
-        catalogue.AddBus({
-            bus_raw.name(),
-            bus_raw.is_roundtrip(),
+        transport_catalogue.AddBus({
+            bus.name(),
+            bus.is_roundtrip(),
             move(bus_stops)
         });
     }
 
-    details::DeserializeRenderSetings(database.render_settings(), render_settings);
-
-    return true;
+    return transport_catalogue;
 }
 
-namespace details {
+MapRenderer Serialize(const renderer::MapRenderer& map_renderer) {
+    MapRenderer object;
+    *object.mutable_render_settings() = Serialize(map_renderer.GetSetings());
+    return object;
+}
 
-RenderSettings SerializeRenderSetings(const renderer::RenderSettings& settings) {
-    RenderSettings settings_raw;
+renderer::MapRenderer Deserialize(const MapRenderer& object) {
+    return renderer::MapRenderer(Deserialize(object.render_settings()));
+}
 
-    SET_X(settings, settings_raw, width);
-    SET_X(settings, settings_raw, height);
-    SET_X(settings, settings_raw, padding);
-    SET_X(settings, settings_raw, line_width);
-    SET_X(settings, settings_raw, stop_radius);
-    SET_X(settings, settings_raw, bus_label_font_size);
-    SET_X(settings, settings_raw, stop_label_font_size);
-    SET_X(settings, settings_raw, underlayer_width);
+TransportRouter Serialize(const transport_catalogue::TransportRouter& transport_router) {
+    TransportRouter object;
+    *object.mutable_routing_settings() = Serialize(transport_router.GetSettings());
+    return object;
+}
 
-    *settings_raw.mutable_bus_label_offset() = SerializePoint(settings.bus_label_offset);
-    *settings_raw.mutable_stop_label_offset() = SerializePoint(settings.stop_label_offset);
-    *settings_raw.mutable_underlayer_color() = SerializeColor(settings.underlayer_color);
+transport_catalogue::TransportRouter Deserialize(const TransportRouter& object) {
+    return transport_catalogue::TransportRouter(Deserialize(object.routing_settings()));
+}
 
-    for (const auto& color : settings.color_palette) {
-        *settings_raw.add_color_palette() = SerializeColor(color);
+Stop Serialize(const transport_catalogue::Stop& stop) {
+    Stop object;
+
+    SET_X(stop, object, name);
+    SET_X(stop.coordinates, object, lat);
+    SET_X(stop.coordinates, object, lng);
+
+    return object;
+}
+
+Bus Serialize(const transport_catalogue::Bus& bus) {
+    Bus object;
+
+    SET_X(bus, object, name);
+    SET_X(bus, object, is_roundtrip);
+
+    return object;
+}
+
+RenderSettings Serialize(const renderer::RenderSettings& render_settings) {
+    RenderSettings object;
+
+    SET_X(render_settings, object, width);
+    SET_X(render_settings, object, height);
+    SET_X(render_settings, object, padding);
+    SET_X(render_settings, object, line_width);
+    SET_X(render_settings, object, stop_radius);
+    SET_X(render_settings, object, bus_label_font_size);
+    SET_X(render_settings, object, stop_label_font_size);
+    SET_X(render_settings, object, underlayer_width);
+
+    *object.mutable_bus_label_offset() = Serialize(render_settings.bus_label_offset);
+    *object.mutable_stop_label_offset() = Serialize(render_settings.stop_label_offset);
+    *object.mutable_underlayer_color() = Serialize(render_settings.underlayer_color);
+
+    for (const auto& color : render_settings.color_palette) {
+        *object.add_color_palette() = Serialize(color);
     }
 
-    return settings_raw;
+    return object;
 }
 
-void DeserializeRenderSetings(const RenderSettings& settings_raw, renderer::RenderSettings& render_settings) {
-    GET_X(settings_raw, render_settings, width);
-    GET_X(settings_raw, render_settings, height);
-    GET_X(settings_raw, render_settings, padding);
-    GET_X(settings_raw, render_settings, line_width);
-    GET_X(settings_raw, render_settings, stop_radius);
-    GET_X(settings_raw, render_settings, bus_label_font_size);
-    GET_X(settings_raw, render_settings, stop_label_font_size);
-    GET_X(settings_raw, render_settings, underlayer_width);
+renderer::RenderSettings Deserialize(const RenderSettings& object) {
+    renderer::RenderSettings render_settings;
 
-    render_settings.bus_label_offset = DeserializePoint(settings_raw.bus_label_offset());
-    render_settings.stop_label_offset = DeserializePoint(settings_raw.stop_label_offset());
-    render_settings.underlayer_color = DeserializeColor(settings_raw.underlayer_color());
+    GET_X(object, render_settings, width);
+    GET_X(object, render_settings, height);
+    GET_X(object, render_settings, padding);
+    GET_X(object, render_settings, line_width);
+    GET_X(object, render_settings, stop_radius);
+    GET_X(object, render_settings, bus_label_font_size);
+    GET_X(object, render_settings, stop_label_font_size);
+    GET_X(object, render_settings, underlayer_width);
+
+    render_settings.bus_label_offset = Deserialize(object.bus_label_offset());
+    render_settings.stop_label_offset = Deserialize(object.stop_label_offset());
+    render_settings.underlayer_color = Deserialize(object.underlayer_color());
 
     vector<svg::Color> color_palette;
-    color_palette.reserve(settings_raw.color_palette_size());
-    for (int i = 0; i < settings_raw.color_palette_size(); ++i) {
-        color_palette.push_back(DeserializeColor(settings_raw.color_palette(i)));
+    color_palette.reserve(object.color_palette_size());
+    for (int i = 0; i < object.color_palette_size(); ++i) {
+        color_palette.push_back(Deserialize(object.color_palette(i)));
     }
     render_settings.color_palette = move(color_palette);
+
+    return render_settings;
 }
 
-Point SerializePoint(const svg::Point& point) {
-    Point point_raw;
+RoutingSettings Serialize(const transport_catalogue::RoutingSettings& routing_settings) {
+    RoutingSettings object;
 
-    SET_X(point, point_raw, x);
-    SET_X(point, point_raw, y);
+    SET_X(routing_settings, object, bus_wait_time);
+    SET_X(routing_settings, object, bus_velocity);
 
-    return point_raw;
+    return object;
 }
 
-svg::Point DeserializePoint(const Point& point_raw) {
+transport_catalogue::RoutingSettings Deserialize(const RoutingSettings& object) {
+    transport_catalogue::RoutingSettings routing_settings;
+
+    GET_X(object, routing_settings, bus_wait_time);
+    GET_X(object, routing_settings, bus_velocity);
+
+    return routing_settings;
+}
+
+Point Serialize(const svg::Point& point) {
+    Point object;
+
+    SET_X(point, object, x);
+    SET_X(point, object, y);
+
+    return object;
+}
+
+svg::Point Deserialize(const Point& object) {
     svg::Point point;
 
-    GET_X(point_raw, point, x);
-    GET_X(point_raw, point, y);
+    GET_X(object, point, x);
+    GET_X(object, point, y);
 
     return point;
 }
 
-Color SerializeColor(const svg::Color& color) {
-    Color color_raw;
+Color Serialize(const svg::Color& color) {
+    Color object;
 
     if (holds_alternative<string>(color)) {
-        color_raw.set_name(get<string>(color));
+        object.set_name(get<string>(color));
     } else if (holds_alternative<svg::Rgb>(color)) {
-        *color_raw.mutable_rgb() = SerializeRgb(get<svg::Rgb>(color));
+        *object.mutable_rgb() = Serialize(get<svg::Rgb>(color));
     } else {
-        *color_raw.mutable_rgba() = SerializeRgba(get<svg::Rgba>(color));
+        *object.mutable_rgba() = Serialize(get<svg::Rgba>(color));
     }
 
-    return color_raw;
+    return object;
 }
 
-svg::Color DeserializeColor(const Color& color) {
-    if (color.has_rgba()) {
-        return DeserializeRgba(color.rgba());
-    } else if (color.has_rgb()) {
-        return DeserializeRgb(color.rgb());
+svg::Color Deserialize(const Color& object) {
+    if (object.has_rgba()) {
+        return Deserialize(object.rgba());
+    } else if (object.has_rgb()) {
+        return Deserialize(object.rgb());
     }
 
-    return color.name();
+    return object.name();
 }
 
-Rgb SerializeRgb(const svg::Rgb& rgb) {
-    Rgb rgb_raw;
+Rgb Serialize(const svg::Rgb& rgb) {
+    Rgb object;
 
-    SET_X(rgb, rgb_raw, red);
-    SET_X(rgb, rgb_raw, green);
-    SET_X(rgb, rgb_raw, blue);
+    SET_X(rgb, object, red);
+    SET_X(rgb, object, green);
+    SET_X(rgb, object, blue);
 
-    return rgb_raw;
+    return object;
 }
 
-Rgba SerializeRgba(const svg::Rgba& rgba) {
-    Rgba rgba_raw;
+Rgba Serialize(const svg::Rgba& rgba) {
+    Rgba object;
 
-    SET_X(rgba, rgba_raw, red);
-    SET_X(rgba, rgba_raw, green);
-    SET_X(rgba, rgba_raw, blue);
-    SET_X(rgba, rgba_raw, opacity);
+    SET_X(rgba, object, red);
+    SET_X(rgba, object, green);
+    SET_X(rgba, object, blue);
+    SET_X(rgba, object, opacity);
 
-    return rgba_raw;
+    return object;
 }
 
-svg::Rgba DeserializeRgba(const Rgba& rgba) {
+svg::Rgba Deserialize(const Rgba& object) {
     return {
-        static_cast<uint8_t>(rgba.red()),
-        static_cast<uint8_t>(rgba.green()),
-        static_cast<uint8_t>(rgba.blue()),
-        rgba.opacity()
+        static_cast<uint8_t>(object.red()),
+        static_cast<uint8_t>(object.green()),
+        static_cast<uint8_t>(object.blue()),
+        object.opacity()
     };
 }
 
-svg::Rgb DeserializeRgb(const Rgb& rgb) {
+svg::Rgb Deserialize(const Rgb& object) {
     return {
-        static_cast<uint8_t>(rgb.red()),
-        static_cast<uint8_t>(rgb.green()),
-        static_cast<uint8_t>(rgb.blue())
+        static_cast<uint8_t>(object.red()),
+        static_cast<uint8_t>(object.green()),
+        static_cast<uint8_t>(object.blue())
     };
 }
 

@@ -24,3 +24,7 @@ message RenderSettings {
 
     repeated Color color_palette = 12;
 }
+
+message MapRenderer {
+    RenderSettings render_settings = 1;
+}

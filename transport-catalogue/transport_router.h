@@ -36,9 +36,13 @@ class TransportRouter {
 public:
     using RouteResult = std::pair<double, std::vector<RouteItemDesc>>;
 
-    TransportRouter(RoutingSettings settings, const TransportCatalogue& db);
+    TransportRouter(RoutingSettings settings);
+
+    void Fill(const TransportCatalogue& transport_catalogue);
 
     std::optional<RouteResult> BuildRoute(const Stop& from, const Stop& to) const;
+
+    const RoutingSettings& GetSettings() const;
 
 private:
     void FillGraphWithStops(const TransportCatalogue& db);
@@ -47,8 +51,9 @@ private:
 
     double GetRoadTime(double distance) const;
 
-    const RoutingSettings& settings_;
-    graph::DirectedWeightedGraph<double> graph_;
+    const RoutingSettings settings_;
+
+    std::unique_ptr<graph::DirectedWeightedGraph<double>> graph_;
     std::unique_ptr<graph::Router<double>> router_;
 
     std::unordered_map<StopPtr, std::pair<graph::VertexId, graph::VertexId>> vertices_by_stop_;

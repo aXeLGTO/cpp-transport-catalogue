@@ -3,6 +3,7 @@ syntax = "proto3";
 package transport_catalogue_serialize;
 
 import "map_renderer.proto";
+import "transport_router.proto";
 
 message Stop {
     string name = 1;
@@ -25,8 +26,13 @@ message BusList {
     repeated Bus bus = 1;
 }
 
-message Database {
+message TransportCatalogue {
     StopList stop_list = 1;
     BusList bus_list = 2;
-    RenderSettings render_settings = 3;
+}
+
+message Database {
+    TransportCatalogue transport_catalogue = 1;
+    MapRenderer map_renderer = 2;
+    TransportRouter transport_router = 3;
 }

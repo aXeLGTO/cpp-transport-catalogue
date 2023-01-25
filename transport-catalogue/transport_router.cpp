@@ -9,14 +9,17 @@ namespace transport_catalogue {
 using namespace std;
 using namespace graph;
 
-TransportRouter::TransportRouter(RoutingSettings settings, const TransportCatalogue& db) :
-    settings_(move(settings)),
-    graph_(db.GetStopsCount() * 2) {
+TransportRouter::TransportRouter(RoutingSettings settings) :
+    settings_(move(settings)) {
+}
 
-    // FillGraphWithStops(db);
-    // FillGraphWithBuses(db);
+void TransportRouter::Fill(const TransportCatalogue& transport_catalogue) {
+    graph_ = make_unique<graph::DirectedWeightedGraph<double>>(transport_catalogue.GetStopsCount() * 2);
 
-    router_ = make_unique<graph::Router<double>>(graph_);
+    FillGraphWithStops(transport_catalogue);
+    FillGraphWithBuses(transport_catalogue);
+
+    router_ = make_unique<graph::Router<double>>(*graph_);
 }
 
 optional<TransportRouter::RouteResult> TransportRouter::BuildRoute(const Stop& from, const Stop& to) const {
@@ -37,6 +40,10 @@ optional<TransportRouter::RouteResult> TransportRouter::BuildRoute(const Stop& f
     return nullopt;
 }
 
+const RoutingSettings& TransportRouter::GetSettings() const {
+    return settings_;
+}
+
 double TransportRouter::GetRoadTime(double distance) const {
     return distance / (1000 * settings_.bus_velocity) * 60;
 }
@@ -48,7 +55,7 @@ void TransportRouter::FillGraphWithStops(const TransportCatalogue& db) {
         Edge<double> edge{id++, id++, settings_.bus_wait_time};
 
         vertices_by_stop_.insert({&stop, {edge.from, edge.to}});
-        auto edgeId = graph_.AddEdge(edge);
+        auto edgeId = graph_->AddEdge(edge);
 
         route_items_by_edges_.insert({edgeId, {
             RouteItemType::Wait,
@@ -75,7 +82,7 @@ void TransportRouter::FillGraphWithBuses(const TransportCatalogue& db) {
                     time += GetRoadTime(db.GetDistance(**prev(to), **to));
 
                     Edge<double> edge{from_id, to_id, time};
-                    auto edgeId = graph_.AddEdge(edge);
+                    auto edgeId = graph_->AddEdge(edge);
 
                     route_items_by_edges_.insert({edgeId, {
                         RouteItemType::Bus,
@@ -90,4 +97,4 @@ void TransportRouter::FillGraphWithBuses(const TransportCatalogue& db) {
     }
 }
 
-}
+} // namespace transport_catalogue

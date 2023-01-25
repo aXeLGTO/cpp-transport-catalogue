@@ -1,3 +1,4 @@
+#include "json.h"
 #include "json_reader.h"
 #include "map_renderer.h"
 #include "svg.h"
@@ -20,6 +21,35 @@ void PrintUsage(std::ostream& stream = std::cerr) {
     stream << "Usage: transport_catalogue [make_base|process_requests]\n"sv;
 }
 
+void MakeBase(const json::Document& document) {
+    TransportCatalogue transport_catalogue;
+    ParseBaseRequests(transport_catalogue, document);
+
+    MapRenderer map_renderer(ParseRenderSettings(document));
+
+    TransportRouter transport_router(ParseRoutingSettings(document));
+    transport_router.Fill(transport_catalogue);
+
+    const auto& serialization_settings = ParseSerializationSettings(document);
+    ofstream ofs(serialization_settings.file, ios::binary);
+    transport_catalogue_serialize::Serialize(transport_catalogue, map_renderer, transport_router, ofs);
+}
+
+void ProcessRequests(const json::Document& document) {
+    const auto& serialization_settings = ParseSerializationSettings(document);
+    ifstream ifs(serialization_settings.file, ios::binary);
+
+    if (auto result = transport_catalogue_serialize::Deserialize(ifs)) {
+        auto& [catalogue, renderer, route_manager] = *result;
+        route_manager.Fill(catalogue);
+
+        RequestHandler request_handler(catalogue, renderer, route_manager);
+        ParseStatRequests(request_handler, document, cout);
+
+        // request_handler.RenderMap().Render(cout);
+    }
+}
+
 int main(int argc, char* argv[]) {
     // TestAll();
 
@@ -29,31 +59,12 @@ int main(int argc, char* argv[]) {
     }
 
     const auto& document = json::Load(cin);
-    const auto& serialization_settings = ParseSerializationSettings(document);
-
     const std::string_view mode(argv[1]);
+
     if (mode == "make_base"sv) {
-        TransportCatalogue catalogue;
-        ParseBaseRequests(catalogue, document);
-
-        ofstream ofs(serialization_settings.file, ios::binary);
-        transport_catalogue_serialize::SerializeTransportCatalogue(catalogue, ParseRenderSettings(document), ofs);
+        MakeBase(document);
     } else if (mode == "process_requests"sv) {
-        TransportCatalogue catalogue;
-        RenderSettings render_settings;
-
-        ifstream ifs(serialization_settings.file, ios::binary);
-        transport_catalogue_serialize::DeserializeTransportCatalogue(ifs, catalogue, render_settings);
-
-        MapRenderer renderer(render_settings);
-
-        TransportRouter route_manager({}, catalogue);
-        // TransportRouter route_manager(ParseRoutingSettings(document), catalogue);
-
-        RequestHandler request_handler(catalogue, renderer, route_manager);
-        ParseStatRequests(request_handler, document, cout);
-
-        // request_handler.RenderMap().Render(cout);
+        ProcessRequests(document);
     } else {
         PrintUsage();
         return 1;
