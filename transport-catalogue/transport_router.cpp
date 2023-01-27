@@ -32,14 +32,6 @@ TransportRouter::TransportRouter(
     router_ = make_unique<Router>(*graph_);
 }
 
-// TransportRouter::TransportRouter(TransportRouter&& other) :
-//     settings_(move(other.settings_)),
-//     graph_(move(other.graph_),
-//     router_(move(other.router_)) {
-//     swap(vertices_by_stop_, other.vertices_by_stop_);
-//     swap(route_items_by_edges_, other.route_items_by_edges_);
-// }
-
 optional<TransportRouter::RouteResult> TransportRouter::BuildRoute(const Stop& from, const Stop& to) const {
     auto from_id = vertices_by_stop_.at(&from).first;
     auto to_id = vertices_by_stop_.at(&to).first;

@@ -41,7 +41,6 @@ public:
 
     TransportRouter(RoutingSettings settings, const TransportCatalogue& transport_catalogue);
     TransportRouter(RoutingSettings settings, Router::RoutesInternalData router_data, const TransportCatalogue& transport_catalogue);
-    // TransportRouter(TransportRouter&& other);
 
     std::optional<RouteResult> BuildRoute(const Stop& from, const Stop& to) const;
 
