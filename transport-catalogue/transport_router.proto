@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package transport_catalogue_serialize;
 
+import "graph.proto";
+
 message RoutingSettings {
     double bus_wait_time = 1;
     double bus_velocity = 2;
@@ -9,4 +11,5 @@ message RoutingSettings {
 
 message TransportRouter {
     RoutingSettings routing_settings = 1;
+    Router router = 2;
 }

@@ -24,7 +24,7 @@ struct DeserializeResult {
 
 void Serialize(const transport_catalogue::TransportCatalogue& transport_catalogue,
                const renderer::MapRenderer& map_renderer,
-               const transport_catalogue::TransportRouter&, std::ostream &output);
+               const transport_catalogue::TransportRouter& transport_router, std::ostream &output);
 
 std::optional<DeserializeResult> Deserialize(std::istream& input);
 
@@ -37,7 +37,7 @@ MapRenderer Serialize(const renderer::MapRenderer& map_renderer);
 renderer::MapRenderer Deserialize(const MapRenderer& object);
 
 TransportRouter Serialize(const transport_catalogue::TransportRouter& transport_router);
-transport_catalogue::TransportRouter Deserialize(const TransportRouter& object);
+transport_catalogue::TransportRouter Deserialize(const TransportRouter& object, const transport_catalogue::TransportCatalogue& transport_catalogue);
 
 Stop Serialize(const transport_catalogue::Stop& stop);
 Bus Serialize(const transport_catalogue::Bus& bus);
@@ -47,6 +47,12 @@ renderer::RenderSettings Deserialize(const RenderSettings& object);
 
 RoutingSettings Serialize(const transport_catalogue::RoutingSettings& routing_settings);
 transport_catalogue::RoutingSettings Deserialize(const RoutingSettings& object);
+
+Router Serialize(const transport_catalogue::TransportRouter::Router& router);
+transport_catalogue::TransportRouter::Router::RoutesInternalData Deserialize(const Router& object);
+
+Graph Serialize(const transport_catalogue::TransportRouter::Graph& graph);
+transport_catalogue::TransportRouter::Graph Deserialize(const Graph& object);
 
 Point Serialize(const svg::Point& point);
 svg::Point Deserialize(const Point& object);

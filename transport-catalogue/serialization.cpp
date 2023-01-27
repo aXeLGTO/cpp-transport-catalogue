@@ -2,6 +2,7 @@
 #include "domain.h"
 #include "map_renderer.h"
 #include "transport_catalogue.h"
+#include "graph.h"
 
 using namespace std;
 
@@ -26,10 +27,14 @@ optional<DeserializeResult> Deserialize(istream& input) {
         return nullopt;
     }
 
+    auto transport_catalogue = details::Deserialize(database.transport_catalogue());
+    auto transport_router = details::Deserialize(database.transport_router(), transport_catalogue);
+    auto map_renderer = details::Deserialize(database.map_renderer());
+
     DeserializeResult result{
-        details::Deserialize(database.transport_catalogue()),
-        details::Deserialize(database.map_renderer()),
-        details::Deserialize(database.transport_router())
+        move(transport_catalogue),
+        move(map_renderer),
+        move(transport_router)
     };
 
     return {move(result)};
@@ -135,11 +140,18 @@ renderer::MapRenderer Deserialize(const MapRenderer& object) {
 TransportRouter Serialize(const transport_catalogue::TransportRouter& transport_router) {
     TransportRouter object;
     *object.mutable_routing_settings() = Serialize(transport_router.GetSettings());
+    *object.mutable_router() = Serialize(transport_router.GetRouter());
     return object;
 }
 
-transport_catalogue::TransportRouter Deserialize(const TransportRouter& object) {
-    return transport_catalogue::TransportRouter(Deserialize(object.routing_settings()));
+transport_catalogue::TransportRouter Deserialize(const TransportRouter& object, const transport_catalogue::TransportCatalogue& transport_catalogue) {
+    auto router_data = Deserialize(object.router());
+
+    return {
+        Deserialize(object.routing_settings()),
+        move(router_data),
+        transport_catalogue,
+    };
 }
 
 Stop Serialize(const transport_catalogue::Stop& stop) {
@@ -226,6 +238,98 @@ transport_catalogue::RoutingSettings Deserialize(const RoutingSettings& object) 
     GET_X(object, routing_settings, bus_velocity);
 
     return routing_settings;
+}
+
+Router Serialize(const transport_catalogue::TransportRouter::Router& router) {
+    Router object;
+
+    for (const auto& routes : router.GetRoutesRange()) {
+        auto& route_list = *object.add_route_list();
+
+        for (const auto& route : routes) {
+            auto& route_object = *route_list.add_route();
+
+            if (route) {
+                RouteData data;
+                data.set_weight(route->weight);
+
+                if (route->prev_edge) {
+                    EdgeId edge_id;
+                    edge_id.set_id(*route->prev_edge);
+                    *data.mutable_prev_edge() = move(edge_id);
+                }
+
+                *route_object.mutable_data() = move(data);
+            }
+        }
+    }
+
+    return object;
+}
+
+transport_catalogue::TransportRouter::Router::RoutesInternalData Deserialize(const Router& object) {
+    using RouteInternalData = transport_catalogue::TransportRouter::Router::RouteInternalData;
+    using RoutesInternalData = transport_catalogue::TransportRouter::Router::RoutesInternalData;
+
+    int vertex_count = object.route_list_size();
+    RoutesInternalData data(vertex_count, vector<optional<RouteInternalData>>(vertex_count));
+
+    for (int from_id = 0; from_id < vertex_count; ++from_id) {
+        const auto& route_list = object.route_list(from_id);
+
+        for (int to_id = 0; to_id < route_list.route_size(); ++to_id) {
+            const auto& route = route_list.route(to_id);
+
+            if (route.has_data()) {
+                const auto& route_data = route.data();
+                optional<graph::EdgeId> prev_edge;
+
+                if (route_data.has_prev_edge()) {
+                    prev_edge = route_data.prev_edge().id();
+                }
+
+                data[from_id][to_id] = {
+                    route_data.weight(),
+                    prev_edge
+                };
+            }
+        }
+    }
+
+    return data;
+}
+
+Graph Serialize(const transport_catalogue::TransportRouter::Graph& graph) {
+    Graph object;
+
+    object.set_vertex_count(graph.GetVertexCount());
+
+    for (graph::EdgeId edge_id = 0; edge_id < graph.GetEdgeCount(); ++edge_id) {
+        auto& edge_object = *object.add_edge();
+        auto& edge = graph.GetEdge(edge_id);
+
+        SET_X(edge, edge_object, from);
+        SET_X(edge, edge_object, to);
+        SET_X(edge, edge_object, weight);
+    }
+
+    return object;
+}
+
+transport_catalogue::TransportRouter::Graph Deserialize(const Graph& object) {
+    transport_catalogue::TransportRouter::Graph graph(object.vertex_count());
+
+    for (int edge_id = 0; edge_id < object.edge_size(); ++edge_id) {
+        const auto& edge = object.edge(edge_id);
+
+        graph.AddEdge(graph::Edge<double>{
+            static_cast<graph::VertexId>(edge.from()),
+            static_cast<graph::VertexId>(edge.to()),
+            edge.weight()
+        });
+    }
+
+    return graph;
 }
 
 Point Serialize(const svg::Point& point) {

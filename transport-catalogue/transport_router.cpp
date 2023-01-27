@@ -9,18 +9,36 @@ namespace transport_catalogue {
 using namespace std;
 using namespace graph;
 
-TransportRouter::TransportRouter(RoutingSettings settings) :
-    settings_(move(settings)) {
-}
-
-void TransportRouter::Fill(const TransportCatalogue& transport_catalogue) {
-    graph_ = make_unique<graph::DirectedWeightedGraph<double>>(transport_catalogue.GetStopsCount() * 2);
+TransportRouter::TransportRouter(RoutingSettings settings, const TransportCatalogue& transport_catalogue) :
+    settings_(move(settings)),
+    graph_(make_unique<Graph>(transport_catalogue.GetStopsCount() * 2)) {
 
     FillGraphWithStops(transport_catalogue);
     FillGraphWithBuses(transport_catalogue);
 
     router_ = make_unique<graph::Router<double>>(*graph_);
 }
+
+TransportRouter::TransportRouter(
+        RoutingSettings settings,
+        TransportRouter::Router::RoutesInternalData router_data,
+        const TransportCatalogue& transport_catalogue) :
+    settings_(move(settings)),
+    graph_(make_unique<Graph>(transport_catalogue.GetStopsCount() * 2)) {
+
+    FillGraphWithStops(transport_catalogue);
+    FillGraphWithBuses(transport_catalogue);
+
+    router_ = make_unique<Router>(*graph_);
+}
+
+// TransportRouter::TransportRouter(TransportRouter&& other) :
+//     settings_(move(other.settings_)),
+//     graph_(move(other.graph_),
+//     router_(move(other.router_)) {
+//     swap(vertices_by_stop_, other.vertices_by_stop_);
+//     swap(route_items_by_edges_, other.route_items_by_edges_);
+// }
 
 optional<TransportRouter::RouteResult> TransportRouter::BuildRoute(const Stop& from, const Stop& to) const {
     auto from_id = vertices_by_stop_.at(&from).first;
@@ -42,6 +60,10 @@ optional<TransportRouter::RouteResult> TransportRouter::BuildRoute(const Stop& f
 
 const RoutingSettings& TransportRouter::GetSettings() const {
     return settings_;
+}
+
+const TransportRouter::Router& TransportRouter::GetRouter() const {
+    return *router_;
 }
 
 double TransportRouter::GetRoadTime(double distance) const {

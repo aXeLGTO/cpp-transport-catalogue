@@ -2,6 +2,7 @@
 
 #include "ranges.h"
 
+#include <cstddef>
 #include <cstdlib>
 #include <vector>
 
@@ -26,6 +27,7 @@ private:
 public:
     DirectedWeightedGraph() = default;
     explicit DirectedWeightedGraph(size_t vertex_count);
+
     EdgeId AddEdge(const Edge<Weight>& edge);
 
     size_t GetVertexCount() const;
@@ -39,8 +41,8 @@ private:
 };
 
 template <typename Weight>
-DirectedWeightedGraph<Weight>::DirectedWeightedGraph(size_t vertex_count)
-    : incidence_lists_(vertex_count) {
+DirectedWeightedGraph<Weight>::DirectedWeightedGraph(size_t vertex_count) :
+    incidence_lists_(vertex_count) {
 }
 
 template <typename Weight>

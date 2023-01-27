@@ -1,5 +1,6 @@
 #pragma once
 #include "domain.h"
+#include "graph.h"
 #include "transport_catalogue.h"
 #include "router.h"
 
@@ -34,15 +35,19 @@ struct RouteItemDesc {
 
 class TransportRouter {
 public:
+    using Router = graph::Router<double>;
+    using Graph = Router::Graph;
     using RouteResult = std::pair<double, std::vector<RouteItemDesc>>;
 
-    TransportRouter(RoutingSettings settings);
-
-    void Fill(const TransportCatalogue& transport_catalogue);
+    TransportRouter(RoutingSettings settings, const TransportCatalogue& transport_catalogue);
+    TransportRouter(RoutingSettings settings, Router::RoutesInternalData router_data, const TransportCatalogue& transport_catalogue);
+    // TransportRouter(TransportRouter&& other);
 
     std::optional<RouteResult> BuildRoute(const Stop& from, const Stop& to) const;
 
     const RoutingSettings& GetSettings() const;
+
+    const Router& GetRouter() const;
 
 private:
     void FillGraphWithStops(const TransportCatalogue& db);
@@ -53,8 +58,8 @@ private:
 
     const RoutingSettings settings_;
 
-    std::unique_ptr<graph::DirectedWeightedGraph<double>> graph_;
-    std::unique_ptr<graph::Router<double>> router_;
+    std::unique_ptr<Graph> graph_;
+    std::unique_ptr<Router> router_;
 
     std::unordered_map<StopPtr, std::pair<graph::VertexId, graph::VertexId>> vertices_by_stop_;
     std::unordered_map<graph::EdgeId, RouteItemDesc> route_items_by_edges_;

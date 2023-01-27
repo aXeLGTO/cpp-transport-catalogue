@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graph.h"
+#include "ranges.h"
 
 #include <algorithm>
 #include <cassert>
@@ -16,11 +17,18 @@ namespace graph {
 
 template <typename Weight>
 class Router {
-private:
+public:
     using Graph = DirectedWeightedGraph<Weight>;
 
-public:
     explicit Router(const Graph& graph);
+
+    struct RouteInternalData {
+        Weight weight;
+        std::optional<EdgeId> prev_edge;
+    };
+    using RoutesInternalData = std::vector<std::vector<std::optional<RouteInternalData>>>;
+
+    Router(const Graph& graph, RoutesInternalData routes_data);
 
     struct RouteInfo {
         Weight weight;
@@ -29,13 +37,11 @@ public:
 
     std::optional<RouteInfo> BuildRoute(VertexId from, VertexId to) const;
 
-private:
-    struct RouteInternalData {
-        Weight weight;
-        std::optional<EdgeId> prev_edge;
-    };
-    using RoutesInternalData = std::vector<std::vector<std::optional<RouteInternalData>>>;
+    auto GetRoutesRange() const {
+        return ranges::AsRange(routes_internal_data_);
+    }
 
+private:
     void InitializeRoutesInternalData(const Graph& graph) {
         const size_t vertex_count = graph.GetVertexCount();
         for (VertexId vertex = 0; vertex < vertex_count; ++vertex) {
@@ -92,6 +98,12 @@ Router<Weight>::Router(const Graph& graph)
     for (VertexId vertex_through = 0; vertex_through < vertex_count; ++vertex_through) {
         RelaxRoutesInternalDataThroughVertex(vertex_count, vertex_through);
     }
+}
+
+template <typename Weight>
+Router<Weight>::Router(const Graph& graph, RoutesInternalData routes_data) :
+    graph_(graph),
+    routes_internal_data_(move(routes_data)) {
 }
 
 template <typename Weight>

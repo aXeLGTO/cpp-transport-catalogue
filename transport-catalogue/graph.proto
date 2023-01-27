@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package transport_catalogue_serialize;
+
+message IncidenceList {
+    repeated int32 edge_id = 1;
+}
+
+message Edge {
+    int32 from = 1;
+    int32 to = 2;
+    double weight = 3;
+}
+
+message Graph {
+    repeated Edge edge = 1;
+    int32 vertex_count = 2;
+}
+
+message EdgeId {
+    int32 id = 1;
+}
+
+message RouteData {
+    double weight = 1;
+    EdgeId prev_edge = 2;
+}
+
+message Route {
+    RouteData data = 1;
+}
+
+message RouteList {
+    repeated Route route = 1;
+}
+
+message Router {
+    repeated RouteList route_list = 1;
+}

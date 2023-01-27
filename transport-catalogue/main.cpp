@@ -27,8 +27,7 @@ void MakeBase(const json::Document& document) {
 
     MapRenderer map_renderer(ParseRenderSettings(document));
 
-    TransportRouter transport_router(ParseRoutingSettings(document));
-    transport_router.Fill(transport_catalogue);
+    TransportRouter transport_router(ParseRoutingSettings(document), transport_catalogue);
 
     const auto& serialization_settings = ParseSerializationSettings(document);
     ofstream ofs(serialization_settings.file, ios::binary);
@@ -40,10 +39,9 @@ void ProcessRequests(const json::Document& document) {
     ifstream ifs(serialization_settings.file, ios::binary);
 
     if (auto result = transport_catalogue_serialize::Deserialize(ifs)) {
-        auto& [catalogue, renderer, route_manager] = *result;
-        route_manager.Fill(catalogue);
+        auto& [transport_catalogue, map_renderer, transport_router] = *result;
 
-        RequestHandler request_handler(catalogue, renderer, route_manager);
+        RequestHandler request_handler(transport_catalogue, map_renderer, transport_router);
         ParseStatRequests(request_handler, document, cout);
 
         // request_handler.RenderMap().Render(cout);
