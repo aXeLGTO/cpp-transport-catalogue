@@ -29,7 +29,7 @@ TransportRouter::TransportRouter(
     FillGraphWithStops(transport_catalogue);
     FillGraphWithBuses(transport_catalogue);
 
-    router_ = make_unique<Router>(*graph_);
+    router_ = make_unique<Router>(*graph_, router_data);
 }
 
 optional<TransportRouter::RouteResult> TransportRouter::BuildRoute(const Stop& from, const Stop& to) const {
