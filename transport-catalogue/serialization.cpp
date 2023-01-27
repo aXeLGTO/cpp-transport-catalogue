@@ -44,6 +44,7 @@ namespace details {
 
 TransportCatalogue Serialize(const transport_catalogue::TransportCatalogue& transport_catalogue) {
     unordered_map<transport_catalogue::StopPtr, int> stop_to_id;
+    TransportCatalogue object;
 
     StopList stop_list;
     for (const auto& stop : transport_catalogue.GetStopsRange()) {
@@ -51,13 +52,13 @@ TransportCatalogue Serialize(const transport_catalogue::TransportCatalogue& tran
         *stop_list.add_stop() = Serialize(stop);
     }
 
-    for (const auto& [stops, distance] : transport_catalogue.GetStopsDistanceRange()) {
+    for (const auto& [stops, length] : transport_catalogue.GetStopsDistanceRange()) {
         const auto& [from, to] = stops;
-        int from_id = stop_to_id[from];
-        int to_id = stop_to_id[to];
+        auto& distance = *object.add_distance();
 
-        auto& distances = *stop_list.mutable_stop(from_id)->mutable_distance();
-        distances[to_id] = distance;
+        distance.set_from_id(stop_to_id[from]);
+        distance.set_to_id(stop_to_id[to]);
+        distance.set_length(length);
     }
 
     BusList bus_list;
@@ -69,7 +70,6 @@ TransportCatalogue Serialize(const transport_catalogue::TransportCatalogue& tran
         *bus_list.add_bus() = move(object);
     }
 
-    TransportCatalogue object;
     *object.mutable_stop_list() = move(stop_list);
     *object.mutable_bus_list() = move(bus_list);
     return object;
@@ -92,17 +92,16 @@ transport_catalogue::TransportCatalogue Deserialize(const TransportCatalogue& ob
         all_stops.push_back(&transport_catalogue.FindStop(stop_raw.name()));
     }
 
-    for (int from_id = 0; from_id < stop_list.stop_size(); ++from_id) {
-        const auto& stop = stop_list.stop(from_id);
-        const auto& from = transport_catalogue.FindStop(stop.name());
+    for (int i = 0; i < object.distance_size(); ++i) {
+        auto& distance = object.distance(i);
+        auto& from = stop_list.stop(distance.from_id());
+        auto& to = stop_list.stop(distance.to_id());
 
-        for (const auto& [to_id, distance] : stop.distance()) {
-            transport_catalogue.SetDistance(
-                from,
-                transport_catalogue.FindStop(stop_list.stop(to_id).name()),
-                distance
-            );
-        }
+        transport_catalogue.SetDistance(
+            transport_catalogue.FindStop(from.name()),
+            transport_catalogue.FindStop(to.name()),
+            distance.length()
+        );
     }
 
     const auto& bus_list = object.bus_list();
