@@ -8,12 +8,6 @@
 #include <optional>
 #include <transport_catalogue.pb.h>
 
-#define SET_X(src, dst, field)    \
-    dst.set_##field(src.field)
-
-#define GET_X(src, dst, field)    \
-    dst.field = src.field()
-
 namespace transport_catalogue_serialize {
 
 struct DeserializeResult {

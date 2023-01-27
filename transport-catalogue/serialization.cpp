@@ -157,9 +157,9 @@ transport_catalogue::TransportRouter Deserialize(const TransportRouter& object, 
 Stop Serialize(const transport_catalogue::Stop& stop) {
     Stop object;
 
-    SET_X(stop, object, name);
-    SET_X(stop.coordinates, object, lat);
-    SET_X(stop.coordinates, object, lng);
+    object.set_name(stop.name);
+    object.set_lat(stop.coordinates.lat);
+    object.set_lng(stop.coordinates.lng);
 
     return object;
 }
@@ -167,8 +167,8 @@ Stop Serialize(const transport_catalogue::Stop& stop) {
 Bus Serialize(const transport_catalogue::Bus& bus) {
     Bus object;
 
-    SET_X(bus, object, name);
-    SET_X(bus, object, is_roundtrip);
+    object.set_name(bus.name);
+    object.set_is_roundtrip(bus.is_roundtrip);
 
     return object;
 }
@@ -176,14 +176,14 @@ Bus Serialize(const transport_catalogue::Bus& bus) {
 RenderSettings Serialize(const renderer::RenderSettings& render_settings) {
     RenderSettings object;
 
-    SET_X(render_settings, object, width);
-    SET_X(render_settings, object, height);
-    SET_X(render_settings, object, padding);
-    SET_X(render_settings, object, line_width);
-    SET_X(render_settings, object, stop_radius);
-    SET_X(render_settings, object, bus_label_font_size);
-    SET_X(render_settings, object, stop_label_font_size);
-    SET_X(render_settings, object, underlayer_width);
+    object.set_width(render_settings.width);
+    object.set_height(render_settings.height);
+    object.set_padding(render_settings.padding);
+    object.set_line_width(render_settings.line_width);
+    object.set_stop_radius(render_settings.stop_radius);
+    object.set_bus_label_font_size(render_settings.bus_label_font_size);
+    object.set_stop_label_font_size(render_settings.stop_label_font_size);
+    object.set_underlayer_width(render_settings.underlayer_width);
 
     *object.mutable_bus_label_offset() = Serialize(render_settings.bus_label_offset);
     *object.mutable_stop_label_offset() = Serialize(render_settings.stop_label_offset);
@@ -199,14 +199,14 @@ RenderSettings Serialize(const renderer::RenderSettings& render_settings) {
 renderer::RenderSettings Deserialize(const RenderSettings& object) {
     renderer::RenderSettings render_settings;
 
-    GET_X(object, render_settings, width);
-    GET_X(object, render_settings, height);
-    GET_X(object, render_settings, padding);
-    GET_X(object, render_settings, line_width);
-    GET_X(object, render_settings, stop_radius);
-    GET_X(object, render_settings, bus_label_font_size);
-    GET_X(object, render_settings, stop_label_font_size);
-    GET_X(object, render_settings, underlayer_width);
+    render_settings.width = object.width();
+    render_settings.height = object.height();
+    render_settings.padding = object.padding();
+    render_settings.line_width = object.line_width();
+    render_settings.stop_radius = object.stop_radius();
+    render_settings.bus_label_font_size = object.bus_label_font_size();
+    render_settings.stop_label_font_size = object.stop_label_font_size();
+    render_settings.underlayer_width = object.underlayer_width();
 
     render_settings.bus_label_offset = Deserialize(object.bus_label_offset());
     render_settings.stop_label_offset = Deserialize(object.stop_label_offset());
@@ -225,8 +225,8 @@ renderer::RenderSettings Deserialize(const RenderSettings& object) {
 RoutingSettings Serialize(const transport_catalogue::RoutingSettings& routing_settings) {
     RoutingSettings object;
 
-    SET_X(routing_settings, object, bus_wait_time);
-    SET_X(routing_settings, object, bus_velocity);
+    object.set_bus_wait_time(routing_settings.bus_wait_time);
+    object.set_bus_velocity(routing_settings.bus_velocity);
 
     return object;
 }
@@ -234,8 +234,8 @@ RoutingSettings Serialize(const transport_catalogue::RoutingSettings& routing_se
 transport_catalogue::RoutingSettings Deserialize(const RoutingSettings& object) {
     transport_catalogue::RoutingSettings routing_settings;
 
-    GET_X(object, routing_settings, bus_wait_time);
-    GET_X(object, routing_settings, bus_velocity);
+    routing_settings.bus_wait_time = object.bus_wait_time();
+    routing_settings.bus_velocity = object.bus_velocity();
 
     return routing_settings;
 }
@@ -302,19 +302,17 @@ transport_catalogue::TransportRouter::Router::RoutesInternalData Deserialize(con
 Point Serialize(const svg::Point& point) {
     Point object;
 
-    SET_X(point, object, x);
-    SET_X(point, object, y);
+    object.set_x(point.x);
+    object.set_y(point.y);
 
     return object;
 }
 
 svg::Point Deserialize(const Point& object) {
-    svg::Point point;
-
-    GET_X(object, point, x);
-    GET_X(object, point, y);
-
-    return point;
+    return {
+        object.x(),
+        object.y()
+    };
 }
 
 Color Serialize(const svg::Color& color) {
@@ -344,9 +342,9 @@ svg::Color Deserialize(const Color& object) {
 Rgb Serialize(const svg::Rgb& rgb) {
     Rgb object;
 
-    SET_X(rgb, object, red);
-    SET_X(rgb, object, green);
-    SET_X(rgb, object, blue);
+    object.set_red(rgb.red);
+    object.set_green(rgb.green);
+    object.set_blue(rgb.blue);
 
     return object;
 }
@@ -354,10 +352,10 @@ Rgb Serialize(const svg::Rgb& rgb) {
 Rgba Serialize(const svg::Rgba& rgba) {
     Rgba object;
 
-    SET_X(rgba, object, red);
-    SET_X(rgba, object, green);
-    SET_X(rgba, object, blue);
-    SET_X(rgba, object, opacity);
+    object.set_red(rgba.red);
+    object.set_green(rgba.green);
+    object.set_blue(rgba.blue);
+    object.set_opacity(rgba.opacity);
 
     return object;
 }
