@@ -51,9 +51,6 @@ transport_catalogue::RoutingSettings Deserialize(const RoutingSettings& object);
 Router Serialize(const transport_catalogue::TransportRouter::Router& router);
 transport_catalogue::TransportRouter::Router::RoutesInternalData Deserialize(const Router& object);
 
-Graph Serialize(const transport_catalogue::TransportRouter::Graph& graph);
-transport_catalogue::TransportRouter::Graph Deserialize(const Graph& object);
-
 Point Serialize(const svg::Point& point);
 svg::Point Deserialize(const Point& object);
 

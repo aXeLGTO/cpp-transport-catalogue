@@ -299,39 +299,6 @@ transport_catalogue::TransportRouter::Router::RoutesInternalData Deserialize(con
     return data;
 }
 
-Graph Serialize(const transport_catalogue::TransportRouter::Graph& graph) {
-    Graph object;
-
-    object.set_vertex_count(graph.GetVertexCount());
-
-    for (graph::EdgeId edge_id = 0; edge_id < graph.GetEdgeCount(); ++edge_id) {
-        auto& edge_object = *object.add_edge();
-        auto& edge = graph.GetEdge(edge_id);
-
-        SET_X(edge, edge_object, from);
-        SET_X(edge, edge_object, to);
-        SET_X(edge, edge_object, weight);
-    }
-
-    return object;
-}
-
-transport_catalogue::TransportRouter::Graph Deserialize(const Graph& object) {
-    transport_catalogue::TransportRouter::Graph graph(object.vertex_count());
-
-    for (int edge_id = 0; edge_id < object.edge_size(); ++edge_id) {
-        const auto& edge = object.edge(edge_id);
-
-        graph.AddEdge(graph::Edge<double>{
-            static_cast<graph::VertexId>(edge.from()),
-            static_cast<graph::VertexId>(edge.to()),
-            edge.weight()
-        });
-    }
-
-    return graph;
-}
-
 Point Serialize(const svg::Point& point) {
     Point object;
 
